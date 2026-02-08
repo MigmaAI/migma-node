@@ -44,7 +44,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/migma-ai/migma-node"
+    "url": "https://github.com/MigmaAI/migma-node"
   },
   "homepage": "https://docs.migma.ai",
   "engines": {
