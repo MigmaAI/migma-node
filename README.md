@@ -20,19 +20,63 @@ import { Migma } from 'migma';
 
 const migma = new Migma('mgma_sk_live_...');
 
-// Generate an email with AI
-const { data, error } = await migma.emails.generateAndWait({
-  projectId: 'proj_abc123',
+// A project holds your brand info (colors, fonts, logos, tone of voice).
+// Import one from your website, or grab the ID of an existing project
+// from the Migma dashboard.
+const { data: project } = await migma.projects.importAndWait({
+  urls: ['https://yourcompany.com'],
+});
+
+// Generate an email design with AI — returns the finished HTML directly
+const { data: email } = await migma.emails.generateAndWait({
+  projectId: project.projectId,
   prompt: 'Create a welcome email for new subscribers',
 });
 
-if (data?.status === 'completed') {
-  console.log(data.result.subject);
-  console.log(data.result.html);
+if (email?.status === 'completed') {
+  console.log('Subject:', email.result.subject);
+  console.log('HTML:', email.result.html); // production-ready HTML
 }
 ```
 
+> **Prefer async?** Use `migma.emails.generate()` to kick off generation without waiting,
+> then set up a [webhook](https://docs.migma.ai/webhooks) to get notified when the design is ready
+> via the `email.generation.completed` event — no polling needed.
+
 Get your API key from the [Migma Dashboard](https://migma.ai) under **Settings > API Integration > API Keys**.
+
+### Quick Start with OpenClaw
+
+[OpenClaw](https://openclaw.ai/) (formerly ClawdBot) is an open-source AI agent for WhatsApp, Telegram, and Discord. Pair it with Migma to generate and send professional emails from a single chat command.
+
+```typescript
+import { Migma } from 'migma';
+
+const migma = new Migma(process.env.MIGMA_API_KEY);
+
+// 1. Set up an instant sending domain (no DNS needed)
+await migma.domains.createManaged({ prefix: 'yourcompany' });
+
+// 2. Generate an on-brand email with AI
+const { data: email } = await migma.emails.generateAndWait({
+  projectId: process.env.MIGMA_PROJECT_ID, // your brand project
+  prompt: 'Create a summer sale email with 30% off everything',
+});
+
+// 3. Send it
+await migma.sending.send({
+  recipientType: 'email',
+  recipientEmail: 'sarah@example.com',
+  from: 'hello@yourcompany.migma.email',
+  fromName: 'Your Company',
+  subject: email.result.subject,
+  template: email.result.html,
+  providerType: 'migma',
+  projectId: process.env.MIGMA_PROJECT_ID,
+});
+```
+
+[Full OpenClaw tutorial](https://docs.migma.ai/tutorials/send-emails-from-openclaw)
 
 ## Documentation
 
@@ -393,26 +437,7 @@ await migma.previews.createAndWait(params, options);
 
 ### Send emails from WhatsApp/Telegram via OpenClaw
 
-[OpenClaw](https://openclaw.ai/) is an open-source AI agent for messaging apps. Pair it with Migma to send professional emails from a single chat command — no ESP dashboard needed.
-
-```typescript
-// Set up a managed domain (instant, no DNS)
-await migma.domains.createManaged({ prefix: 'yourcompany' });
-
-// Send from your OpenClaw bot
-await migma.sending.send({
-  recipientType: 'email',
-  recipientEmail: 'sarah@example.com',
-  from: 'hello@yourcompany.migma.email',
-  fromName: 'Your Company',
-  subject: 'Hello from OpenClaw',
-  template: '<h1>Hi!</h1><p>Sent via OpenClaw + Migma.</p>',
-  providerType: 'migma',
-  projectId: 'proj_abc123',
-});
-```
-
-[OpenClaw Guide](https://docs.migma.ai/integrations/openclaw)
+See [Quick Start with OpenClaw](#quick-start-with-openclaw) above, or read the [full tutorial](https://docs.migma.ai/tutorials/send-emails-from-openclaw).
 
 ### Generate + validate + send in one pipeline
 

@@ -11,7 +11,7 @@ export interface SendEmailParams {
   fromName: string;
   replyTo?: string;
   subject: string;
-  /** HTML template string */
+  /** Email template — raw HTML or a React Email TSX component with a default export */
   template: string;
   variables?: Record<string, unknown>;
   providerType?: ProviderType;
@@ -20,7 +20,11 @@ export interface SendEmailParams {
 }
 
 export interface SendEmailResponse {
-  [key: string]: unknown;
+  id: string;
+  provider: string;
+  status: string;
+  sentCount?: number;
+  message?: string;
 }
 
 export interface BatchStatus {
