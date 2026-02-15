@@ -15,7 +15,7 @@ import { KnowledgeBase } from './resources/knowledge-base';
 import { Images } from './resources/images';
 
 export interface MigmaConfig {
-  /** API base URL. Default: 'https://api.migma.ai/api/v1' */
+  /** API base URL. Default: 'https://api.migma.ai/v1' */
   baseUrl?: string;
   /** Request timeout in ms. Default: 30000 */
   timeout?: number;
@@ -51,7 +51,7 @@ export class Migma {
     }
 
     this.client = new MigmaClient(apiKey, {
-      baseUrl: config?.baseUrl ?? 'https://api.migma.ai/api/v1',
+      baseUrl: config?.baseUrl ?? 'https://api.migma.ai/v1',
       timeout: config?.timeout ?? 30000,
       maxRetries: config?.maxRetries ?? 2,
       retryDelay: config?.retryDelay ?? 1000,

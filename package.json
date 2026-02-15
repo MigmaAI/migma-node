@@ -1,6 +1,6 @@
 {
   "name": "migma",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Official Node.js SDK for the Migma email platform API",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
