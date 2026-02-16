@@ -17,8 +17,6 @@ import { Images } from './resources/images';
 export interface MigmaConfig {
   /** API base URL. Default: 'https://api.migma.ai/v1' */
   baseUrl?: string;
-  /** Request timeout in ms. Default: 30000 */
-  timeout?: number;
   /** Max retries on 5xx/429 errors. Default: 2 */
   maxRetries?: number;
   /** Base delay between retries in ms. Default: 1000 */
@@ -52,7 +50,6 @@ export class Migma {
 
     this.client = new MigmaClient(apiKey, {
       baseUrl: config?.baseUrl ?? 'https://api.migma.ai/v1',
-      timeout: config?.timeout ?? 30000,
       maxRetries: config?.maxRetries ?? 2,
       retryDelay: config?.retryDelay ?? 1000,
     });

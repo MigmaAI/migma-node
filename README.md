@@ -63,16 +63,14 @@ const { data: email } = await migma.emails.generateAndWait({
   prompt: 'Create a summer sale email with 30% off everything',
 });
 
-// 3. Send it
+// 3. Send it — conversationId resolves the template and project automatically
 await migma.sending.send({
   recipientType: 'email',
   recipientEmail: 'sarah@example.com',
   from: 'hello@yourcompany.migma.email',
   fromName: 'Your Company',
   subject: email.result.subject,
-  template: email.result.html,
-  providerType: 'migma',
-  projectId: process.env.MIGMA_PROJECT_ID,
+  conversationId: email.conversationId,
 });
 ```
 
@@ -107,8 +105,7 @@ await migma.sending.send({
 import { Migma } from 'migma';
 
 const migma = new Migma('mgma_sk_live_...', {
-  baseUrl: 'https://api.migma.ai/api/v1', // default
-  timeout: 30000,                          // 30s default
+  baseUrl: 'https://api.migma.ai/v1', // default
   maxRetries: 2,                           // retries on 5xx/429
   retryDelay: 1000,                        // base delay between retries
 });
@@ -223,15 +220,14 @@ const { data: result } = await migma.contacts.bulkImport({
 Send to a single recipient, segment, tag, or full audience.
 
 ```typescript
-// Send to a single recipient
+// Send using a conversationId (template + project resolved automatically)
 await migma.sending.send({
   recipientType: 'email',
   recipientEmail: 'user@example.com',
   from: 'hello@yourdomain.com',
   fromName: 'Your Company',
   subject: 'Welcome!',
-  template: '<html>...</html>',
-  projectId: 'proj_abc123',
+  conversationId: 'conv_abc123',
 });
 
 // Send to a segment
@@ -241,8 +237,7 @@ await migma.sending.send({
   from: 'hello@yourdomain.com',
   fromName: 'Your Company',
   subject: 'Big Announcement',
-  template: '<html>...</html>',
-  projectId: 'proj_abc123',
+  conversationId: 'conv_abc123',
 });
 ```
 
@@ -459,8 +454,7 @@ if (checks.overallScore > 80) {
     from: 'hello@yourdomain.com',
     fromName: 'Your Brand',
     subject: email.result.subject,
-    template: email.result.html,
-    projectId: 'proj_abc123',
+    conversationId: email.conversationId,
   });
 }
 ```

@@ -3,7 +3,6 @@ import type { ApiResponse, MigmaResult } from './types/common';
 
 export interface ClientConfig {
   baseUrl: string;
-  timeout: number;
   maxRetries: number;
   retryDelay: number;
 }
@@ -15,7 +14,6 @@ interface RequestOptions {
   path: string;
   body?: Record<string, unknown>;
   query?: Record<string, string | number | boolean | undefined>;
-  timeout?: number;
 }
 
 export class MigmaClient {
@@ -29,15 +27,11 @@ export class MigmaClient {
 
   async request<T>(options: RequestOptions): Promise<MigmaResult<T>> {
     const url = this.buildUrl(options.path, options.query);
-    const timeout = options.timeout ?? this.config.timeout;
     const attempts = this.config.maxRetries + 1;
 
     let lastError: MigmaError | null = null;
 
     for (let attempt = 0; attempt < attempts; attempt++) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
-
       try {
         const response = await fetch(url, {
           method: options.method,
@@ -47,10 +41,7 @@ export class MigmaClient {
             'User-Agent': 'migma-node/1.0.0',
           },
           body: options.body ? JSON.stringify(options.body) : undefined,
-          signal: controller.signal,
         });
-
-        clearTimeout(timeoutId);
 
         const json = (await response.json()) as ApiResponse<T>;
 
@@ -78,19 +69,6 @@ export class MigmaClient {
 
         return { data: json.data as T, error: null };
       } catch (err: unknown) {
-        clearTimeout(timeoutId);
-
-        if (err instanceof Error && err.name === 'AbortError') {
-          return {
-            data: null,
-            error: new MigmaError(
-              'Request timed out',
-              0,
-              MigmaErrorCode.TIMEOUT
-            ),
-          };
-        }
-
         lastError = new MigmaError(
           err instanceof Error ? err.message : 'Network error',
           0,
@@ -115,9 +93,6 @@ export class MigmaClient {
     options: RequestOptions
   ): Promise<MigmaResult<{ data: T; count: number }>> {
     const url = this.buildUrl(options.path, options.query);
-    const timeout = options.timeout ?? this.config.timeout;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
       const response = await fetch(url, {
@@ -128,10 +103,7 @@ export class MigmaClient {
           'User-Agent': 'migma-node/1.0.0',
         },
         body: options.body ? JSON.stringify(options.body) : undefined,
-        signal: controller.signal,
       });
-
-      clearTimeout(timeoutId);
 
       const json = (await response.json()) as ApiResponse<T>;
 
@@ -150,19 +122,6 @@ export class MigmaClient {
         error: null,
       };
     } catch (err: unknown) {
-      clearTimeout(timeoutId);
-
-      if (err instanceof Error && err.name === 'AbortError') {
-        return {
-          data: null,
-          error: new MigmaError(
-            'Request timed out',
-            0,
-            MigmaErrorCode.TIMEOUT
-          ),
-        };
-      }
-
       return {
         data: null,
         error: new MigmaError(

@@ -11,11 +11,13 @@ export interface SendEmailParams {
   fromName: string;
   replyTo?: string;
   subject: string;
-  /** Email template — raw HTML or a React Email TSX component with a default export */
-  template: string;
+  /** Email template HTML. Required unless conversationId is provided. */
+  template?: string;
   variables?: Record<string, unknown>;
   providerType?: ProviderType;
-  projectId: string;
+  /** Required unless conversationId is provided. */
+  projectId?: string;
+  /** When provided, template and projectId are resolved automatically from the conversation. */
   conversationId?: string;
 }
 
