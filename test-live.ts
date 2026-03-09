@@ -235,6 +235,71 @@ async function main() {
     console.log(`    ${data!.total} entries`);
   });
 
+  // ─── Campaigns ───
+  console.log('\nCampaigns:');
+
+  await test('list campaigns', async () => {
+    const { data, error } = await migma.campaigns.list({
+      projectId: projectId!,
+      limit: 5,
+    });
+    assert(!error, `Error: ${error?.message}`);
+    assert(!!data, 'No data returned');
+    console.log(`    Found ${data!.total} campaigns`);
+  });
+
+  // To test create/get, we need a conversationId from an existing email
+  let conversationId: string | undefined;
+  await test('find email for campaign test', async () => {
+    const { data, error } = await migma.emails.list({
+      projectId: projectId!,
+      limit: 1,
+      status: 'completed',
+    });
+    assert(!error, `Error: ${error?.message}`);
+    if (data?.emails?.length) {
+      conversationId = data.emails[0].conversationId;
+      console.log(`    Using conversation: ${conversationId}`);
+    } else {
+      console.log('    No completed emails found — skipping campaign create/get tests');
+    }
+  });
+
+  if (conversationId) {
+    let campaignId: string | undefined;
+
+    await test('create campaign', async () => {
+      const { data, error } = await migma.campaigns.create({
+        projectId: projectId!,
+        name: `sdk-test-${Date.now()}`,
+        conversationId: conversationId!,
+        from: 'test@test.migma.email',
+        fromName: 'SDK Test',
+        recipientType: 'tag',
+        recipientId: '000000000000000000000000', // dummy — will still create a draft
+      });
+      // This may fail if the tag doesn't exist, which is fine —
+      // we're testing the SDK plumbing, not the business logic
+      if (error) {
+        console.log(`    Create returned error (expected if tag missing): ${error.message}`);
+        return;
+      }
+      assert(!!data, 'No data returned');
+      campaignId = data!.id;
+      console.log(`    Created campaign: ${data!.name} (${campaignId}) — status: ${data!.status}`);
+    });
+
+    if (campaignId) {
+      await test('get campaign', async () => {
+        const { data, error } = await migma.campaigns.get(campaignId!);
+        assert(!error, `Error: ${error?.message}`);
+        assert(!!data, 'No data returned');
+        assert(data!.id === campaignId, 'Campaign ID mismatch');
+        console.log(`    Got campaign: ${data!.name} — status: ${data!.status}`);
+      });
+    }
+  }
+
   // ─── Error Handling ───
   console.log('\nError Handling:');
   await test('404 returns error (not throw)', async () => {

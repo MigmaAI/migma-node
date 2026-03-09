@@ -13,3 +13,4 @@ export * from './domains';
 export * from './webhooks';
 export * from './knowledge-base';
 export * from './images';
+export * from './campaigns';
