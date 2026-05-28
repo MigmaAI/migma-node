@@ -355,6 +355,53 @@ await migma.topics.subscribe('topic_id', {
 
 [Tags](https://docs.migma.ai/api-reference/tags/list-tags) | [Segments](https://docs.migma.ai/api-reference/audiences/list-audiences) | [Topics](https://docs.migma.ai/api-reference/topics/list-topics)
 
+### Campaigns
+
+Create, schedule, and send email campaigns to your audience.
+
+```typescript
+// List campaigns
+const { data } = await migma.campaigns.list({
+  projectId: 'proj_abc123',
+  status: 'draft',
+  limit: 10,
+});
+
+// Create a campaign
+const { data: campaign } = await migma.campaigns.create({
+  projectId: 'proj_abc123',
+  name: 'Summer Sale Campaign',
+  conversationId: 'conv_abc123',
+  from: 'hello@yourdomain.com',
+  fromName: 'Your Brand',
+  recipientType: 'tag',
+  recipientId: 'tag_abc123',
+  subject: 'Summer Sale — 30% Off Everything',        // optional, defaults from conversation
+  preheaderText: 'Limited time offer',                  // optional
+  replyTo: 'support@yourdomain.com',                   // optional
+  topicId: 'topic_abc123',                              // optional
+  providerType: 'ses',                                  // optional, defaults to migma
+  variables: { discount: '30%' },                       // optional
+});
+
+// Schedule for later
+await migma.campaigns.schedule(campaign.id, {
+  scheduledAt: '2026-07-01T09:00:00Z',
+  scheduledTimezone: 'America/New_York',  // optional
+});
+
+// Or send immediately
+await migma.campaigns.send(campaign.id);
+
+// Cancel a scheduled campaign
+await migma.campaigns.cancel(campaign.id);
+
+// Get campaign details
+const { data: details } = await migma.campaigns.get(campaign.id);
+```
+
+[Campaigns API Reference](https://docs.migma.ai/api-reference/campaigns/list-campaigns)
+
 ### Webhooks
 
 ```typescript
@@ -401,7 +448,7 @@ await migma.images.updateLogos('proj_abc123', {
 | `migma.topics` | `create` `list` `get` `update` `remove` `subscribe` `unsubscribe` | [Topics](https://docs.migma.ai/api-reference/topics/list-topics) |
 | `migma.sending` | `send` `getBatchStatus` | [Sending](https://docs.migma.ai/api-reference/sending/send-email) |
 | `migma.projects` | `list` `get` `import` `getImportStatus` `retryImport` `importAndWait` | [Projects](https://docs.migma.ai/api-reference/projects/list-projects) |
-| `migma.emails` | `generate` `getGenerationStatus` `generateAndWait` `sendTest` | [Email Generation](https://docs.migma.ai/api-reference/email/generate-email-async) |
+| `migma.emails` | `list` `generate` `getGenerationStatus` `generateAndWait` `sendTest` | [Email Generation](https://docs.migma.ai/api-reference/email/generate-email-async) |
 | `migma.validation` | `all` `compatibility` `links` `spelling` `deliverability` | [Validation](https://docs.migma.ai/api-reference/email-validation/run-all-validation-checks) |
 | `migma.previews` | `create` `get` `getStatus` `getDevice` `getSupportedDevices` `createAndWait` | [Previews](https://docs.migma.ai/api-reference/email-previews/create-email-preview) |
 | `migma.export` | `getFormats` `getStatus` `html` `mjml` `pdf` `klaviyo` `mailchimp` `hubspot` | [Export](https://docs.migma.ai/api-reference/export/list-export-formats) |
@@ -409,6 +456,7 @@ await migma.images.updateLogos('proj_abc123', {
 | `migma.webhooks` | `create` `list` `get` `update` `remove` `test` `getDeliveries` `getEvents` `getStats` | [Webhooks](https://docs.migma.ai/webhooks) |
 | `migma.knowledgeBase` | `list` `add` `update` `remove` | [API Ref](https://docs.migma.ai/api-reference/introduction) |
 | `migma.images` | `add` `update` `remove` `updateLogos` | [API Ref](https://docs.migma.ai/api-reference/introduction) |
+| `migma.campaigns` | `create` `list` `get` `send` `schedule` `cancel` | [Campaigns](https://docs.migma.ai/api-reference/campaigns/list-campaigns) |
 
 ## Async Polling Helpers
 
