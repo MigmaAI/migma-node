@@ -4,6 +4,8 @@ import type {
   GenerateEmailParams,
   GenerateEmailResponse,
   EmailGenerationStatus,
+  ListEmailsParams,
+  ListEmailsResponse,
   SendTestEmailParams,
   SendTestEmailResponse,
 } from '../types/emails';
@@ -11,6 +13,16 @@ import { poll, type PollingOptions } from '../polling';
 
 export class Emails {
   constructor(private readonly client: MigmaClient) {}
+
+  async list(params: ListEmailsParams): Promise<MigmaResult<ListEmailsResponse>> {
+    const { projectId, status, page, limit } = params;
+    return this.client.get<ListEmailsResponse>('/projects/emails', {
+      projectId,
+      status,
+      page,
+      limit,
+    });
+  }
 
   /** Start async email generation */
   async generate(

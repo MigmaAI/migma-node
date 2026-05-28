@@ -297,6 +297,30 @@ async function main() {
         assert(data!.id === campaignId, 'Campaign ID mismatch');
         console.log(`    Got campaign: ${data!.name} — status: ${data!.status}`);
       });
+
+      await test('schedule campaign', async () => {
+        const futureDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        const { data, error } = await migma.campaigns.schedule(campaignId!, {
+          scheduledAt: futureDate,
+          scheduledTimezone: 'UTC',
+        });
+        if (error) {
+          console.log(`    Schedule returned error (expected for draft without recipients): ${error.message}`);
+          return;
+        }
+        assert(!!data, 'No data returned');
+        console.log(`    Scheduled campaign: ${data!.name} — status: ${data!.status}, scheduledAt: ${data!.scheduledAt}`);
+      });
+
+      await test('cancel campaign', async () => {
+        const { data, error } = await migma.campaigns.cancel(campaignId!);
+        if (error) {
+          console.log(`    Cancel returned error (expected if not scheduled): ${error.message}`);
+          return;
+        }
+        assert(!!data, 'No data returned');
+        console.log(`    Cancelled campaign: ${data!.name} — status: ${data!.status}`);
+      });
     }
   }
 

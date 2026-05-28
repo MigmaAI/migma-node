@@ -44,6 +44,18 @@ export interface EmailGenerationStatus {
   result?: EmailGenerationResult;
 }
 
+export interface ListEmailsParams {
+  projectId: string;
+  status?: 'pending' | 'processing' | 'completed' | 'failed';
+  page?: number;
+  limit?: number;
+}
+
+export interface ListEmailsResponse {
+  emails: EmailGenerationStatus[];
+  total: number;
+}
+
 export interface SendTestEmailParams {
   conversationId: string;
   to: string;
