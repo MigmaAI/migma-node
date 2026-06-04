@@ -27,7 +27,7 @@ const { data: project } = await migma.projects.importAndWait({
   urls: ['https://yourcompany.com'],
 });
 
-// Generate an email design with AI — returns the finished HTML directly
+// Generate an email design with AI — returns the finished HTML directly.
 const { data: email } = await migma.emails.generateAndWait({
   projectId: project.projectId,
   prompt: 'Create a welcome email for new subscribers',
@@ -35,7 +35,8 @@ const { data: email } = await migma.emails.generateAndWait({
 
 if (email?.status === 'completed') {
   console.log('Subject:', email.result.subject);
-  console.log('HTML:', email.result.html); // production-ready HTML
+  console.log('HTML:', email.result.html); // primary email HTML
+  console.log('Artifact:', email.result.emails[0].artifactId);
 }
 ```
 
@@ -63,15 +64,22 @@ const { data: email } = await migma.emails.generateAndWait({
   prompt: 'Create a summer sale email with 30% off everything',
 });
 
-// 3. Send it — conversationId resolves the template and project automatically
+if (!email?.result) throw new Error('Email generation failed');
+
+// 3. Send it — artifactId works for single emails and series slots
+const selectedEmail = email.result.emails[0];
+if (!selectedEmail.artifactId) throw new Error('No artifactId returned');
 await migma.sending.send({
   recipientType: 'email',
   recipientEmail: 'sarah@example.com',
   from: 'hello@yourcompany.migma.email',
   fromName: 'Your Company',
-  subject: email.result.subject,
-  conversationId: email.conversationId,
+  subject: selectedEmail.subject,
+  artifactId: selectedEmail.artifactId,
 });
+
+// conversationId also works for single-email conversations.
+// For multi-slot emails or series, use result.emails[].artifactId.
 ```
 
 [Full OpenClaw tutorial](https://docs.migma.ai/tutorials/send-emails-from-openclaw)
@@ -89,7 +97,7 @@ await migma.sending.send({
 
 ## Features
 
-- Full coverage of all Migma API v1 endpoints (80+ methods across 14 resources)
+- Full coverage of all Migma API v1 endpoints (80+ methods across 15 resources)
 - TypeScript-first with complete type definitions
 - `{ data, error }` return pattern — methods never throw
 - Automatic retries with exponential backoff on 5xx/429
@@ -220,7 +228,17 @@ const { data: result } = await migma.contacts.bulkImport({
 Send to a single recipient, segment, tag, or full audience.
 
 ```typescript
-// Send using a conversationId (template + project resolved automatically)
+// Send a generated email by artifactId
+await migma.sending.send({
+  recipientType: 'email',
+  recipientEmail: 'user@example.com',
+  from: 'hello@yourdomain.com',
+  fromName: 'Your Company',
+  subject: 'Welcome!',
+  artifactId: 'artifact_abc123',
+});
+
+// Single-email conversations can also be sent by conversationId.
 await migma.sending.send({
   recipientType: 'email',
   recipientEmail: 'user@example.com',
@@ -237,11 +255,50 @@ await migma.sending.send({
   from: 'hello@yourdomain.com',
   fromName: 'Your Company',
   subject: 'Big Announcement',
-  conversationId: 'conv_abc123',
+  artifactId: 'artifact_abc123',
+});
+
+// Single sends are automatically transactional — no flag needed
+// Use transactional: true on batch sends to bypass subscription status
+await migma.sending.send({
+  recipientType: 'tag',
+  recipientId: 'tag_active_users',
+  from: 'noreply@yourdomain.com',
+  fromName: 'Your Company',
+  subject: 'Your subscription renews tomorrow',
+  artifactId: 'artifact_abc123',
+  transactional: true,
 });
 ```
 
 [Sending API Reference](https://docs.migma.ai/api-reference/sending/send-email)
+
+### Generated Series and Editing
+
+Generate a series with `count`, then use each email's `artifactId` to fetch, compile, update, or send one slot.
+
+```typescript
+const { data: series } = await migma.emails.generateAndWait({
+  projectId: 'proj_abc123',
+  prompt: 'Create a three-email onboarding series',
+  count: 3,
+});
+
+for (const generated of series?.result?.emails ?? []) {
+  console.log(generated.slot, generated.artifactId, generated.html);
+}
+
+const { data: email } = await migma.emails.get('artifact_abc123');
+if (!email?.source) throw new Error('Editable source unavailable');
+
+await migma.emails.compile('artifact_abc123', {
+  source: email.source.replace('Start now', 'Start your trial'),
+});
+
+await migma.emails.update('artifact_abc123', {
+  source: email.source.replace('Start now', 'Start your trial'),
+});
+```
 
 ### Email Validation
 

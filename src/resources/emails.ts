@@ -4,6 +4,12 @@ import type {
   GenerateEmailParams,
   GenerateEmailResponse,
   EmailGenerationStatus,
+  EmailArtifact,
+  UpdateEmailArtifactParams,
+  CompileEmailArtifactParams,
+  CompileEmailArtifactResponse,
+  ListEmailsParams,
+  ListEmailsResponse,
   SendTestEmailParams,
   SendTestEmailResponse,
 } from '../types/emails';
@@ -11,6 +17,20 @@ import { poll, type PollingOptions } from '../polling';
 
 export class Emails {
   constructor(private readonly client: MigmaClient) {}
+
+  /** List emails for a project */
+  async list(
+    params: ListEmailsParams
+  ): Promise<MigmaResult<ListEmailsResponse>> {
+    const { projectId, limit, page, status, search } = params;
+    return this.client.get<ListEmailsResponse>('/projects/emails', {
+      projectId,
+      limit,
+      page,
+      status,
+      search,
+    });
+  }
 
   /** Start async email generation */
   async generate(
@@ -28,6 +48,33 @@ export class Emails {
   ): Promise<MigmaResult<EmailGenerationStatus>> {
     return this.client.get<EmailGenerationStatus>(
       `/projects/emails/${conversationId}/status`
+    );
+  }
+
+  /** Fetch one generated email by artifact id */
+  async get(artifactId: string): Promise<MigmaResult<EmailArtifact>> {
+    return this.client.get<EmailArtifact>(`/emails/${artifactId}`);
+  }
+
+  /** Replace one generated email's Migma Email source and persist compiled HTML */
+  async update(
+    artifactId: string,
+    params: UpdateEmailArtifactParams
+  ): Promise<MigmaResult<EmailArtifact>> {
+    return this.client.patch<EmailArtifact>(
+      `/emails/${artifactId}`,
+      params as unknown as Record<string, unknown>
+    );
+  }
+
+  /** Compile an email artifact's source without persisting */
+  async compile(
+    artifactId: string,
+    params?: CompileEmailArtifactParams
+  ): Promise<MigmaResult<CompileEmailArtifactResponse>> {
+    return this.client.post<CompileEmailArtifactResponse>(
+      `/emails/${artifactId}/compile`,
+      (params || {}) as unknown as Record<string, unknown>
     );
   }
 

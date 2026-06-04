@@ -10,15 +10,27 @@ export interface SendEmailParams {
   from: string;
   fromName: string;
   replyTo?: string;
+  bcc?: string[];
   subject: string;
-  /** Email template HTML. Required unless conversationId is provided. */
+  /** Email template source. Required unless conversationId or artifactId is provided. */
   template?: string;
   variables?: Record<string, unknown>;
   providerType?: ProviderType;
-  /** Required unless conversationId is provided. */
+  /** Required unless conversationId or artifactId is provided. */
   projectId?: string;
-  /** When provided, template and projectId are resolved automatically from the conversation. */
+  /**
+   * Slot-precise email artifact id. Use this for a selected email inside a
+   * multi-slot conversation or series. Resolves template, projectId, and parent
+   * conversation automatically.
+   */
+  artifactId?: string;
+  /**
+   * Conversation id. Works for single-email conversations. For multi-slot
+   * conversations, also provide artifactId so API knows which email to send.
+   */
   conversationId?: string;
+  /** Defaults to true for single sends, false for batch sends. Set explicitly to override. Transactional emails bypass subscription status and topic filters, and omit List-Unsubscribe headers. */
+  transactional?: boolean;
 }
 
 export interface SendEmailResponse {
@@ -31,7 +43,7 @@ export interface SendEmailResponse {
 
 export interface BatchStatus {
   batchId: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'queued' | 'processing' | 'completed' | 'failed' | 'partial' | 'throttled';
   recipientType: string;
   recipientId?: string;
   provider: string;
@@ -45,4 +57,13 @@ export interface BatchStatus {
   createdAt: string;
   updatedAt?: string;
   error?: string;
+  /** Present when status is 'throttled' — indicates the batch is waiting for capacity */
+  throttle?: {
+    throttledAt: string;
+    expiresAt: string;
+    resumeCount: number;
+    reason: string;
+    remainingCount: number;
+    resumeMessage?: string;
+  };
 }
