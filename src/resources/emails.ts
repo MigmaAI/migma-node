@@ -1,17 +1,18 @@
-import type { MigmaClient } from '../client';
+import type { CallOptions, MigmaClient } from '../client';
 import type { MigmaResult } from '../types/common';
 import type {
   GenerateEmailParams,
   GenerateEmailResponse,
   EmailGenerationStatus,
-  EmailArtifact,
-  UpdateEmailArtifactParams,
-  CompileEmailArtifactParams,
-  CompileEmailArtifactResponse,
+  Email,
+  EditEmailParams,
   ListEmailsParams,
   ListEmailsResponse,
   SendTestEmailParams,
   SendTestEmailResponse,
+  EmailMetrics,
+  EmailLogsParams,
+  EmailLogsResponse,
 } from '../types/emails';
 import { poll, type PollingOptions } from '../polling';
 
@@ -34,11 +35,13 @@ export class Emails {
 
   /** Start async email generation */
   async generate(
-    params: GenerateEmailParams
+    params: GenerateEmailParams,
+    options?: CallOptions
   ): Promise<MigmaResult<GenerateEmailResponse>> {
     return this.client.post<GenerateEmailResponse>(
       '/projects/emails/generate',
-      params as unknown as Record<string, unknown>
+      params as unknown as Record<string, unknown>,
+      options
     );
   }
 
@@ -51,30 +54,19 @@ export class Emails {
     );
   }
 
-  /** Fetch one generated email by artifact id */
-  async get(artifactId: string): Promise<MigmaResult<EmailArtifact>> {
-    return this.client.get<EmailArtifact>(`/emails/${artifactId}`);
+  /** Fetch one generated email by email id */
+  async get(emailId: string): Promise<MigmaResult<Email>> {
+    return this.client.get<Email>(`/emails/${emailId}`);
   }
 
-  /** Replace one generated email's Migma Email source and persist compiled HTML */
-  async update(
-    artifactId: string,
-    params: UpdateEmailArtifactParams
-  ): Promise<MigmaResult<EmailArtifact>> {
-    return this.client.patch<EmailArtifact>(
-      `/emails/${artifactId}`,
+  /** Prompt Migma to edit one generated email */
+  async edit(
+    emailId: string,
+    params: EditEmailParams
+  ): Promise<MigmaResult<Email>> {
+    return this.client.post<Email>(
+      `/emails/${emailId}/edit`,
       params as unknown as Record<string, unknown>
-    );
-  }
-
-  /** Compile an email artifact's source without persisting */
-  async compile(
-    artifactId: string,
-    params?: CompileEmailArtifactParams
-  ): Promise<MigmaResult<CompileEmailArtifactResponse>> {
-    return this.client.post<CompileEmailArtifactResponse>(
-      `/emails/${artifactId}/compile`,
-      (params || {}) as unknown as Record<string, unknown>
     );
   }
 
@@ -84,9 +76,10 @@ export class Emails {
    */
   async generateAndWait(
     params: GenerateEmailParams,
-    options?: PollingOptions
+    options?: PollingOptions,
+    callOptions?: CallOptions
   ): Promise<MigmaResult<EmailGenerationStatus>> {
-    const startResult = await this.generate(params);
+    const startResult = await this.generate(params, callOptions);
     if (startResult.error) {
       return { data: null, error: startResult.error };
     }
@@ -108,5 +101,27 @@ export class Emails {
       '/emails/test/send',
       params as unknown as Record<string, unknown>
     );
+  }
+
+  /**
+   * Aggregate performance for one generated email across every API send of it:
+   * delivery, opens, clicks, bounces, complaints, unsubscribes + a daily time
+   * series. Events arrive asynchronously; opens are directional while clicks
+   * and delivery events are stronger signals.
+   */
+  async metrics(emailId: string): Promise<MigmaResult<EmailMetrics>> {
+    return this.client.get<EmailMetrics>(`/emails/${emailId}/metrics`);
+  }
+
+  /** Per-recipient send log for one generated email (cursor-paginated). */
+  async logs(
+    emailId: string,
+    params?: EmailLogsParams
+  ): Promise<MigmaResult<EmailLogsResponse>> {
+    return this.client.get<EmailLogsResponse>(`/emails/${emailId}/logs`, {
+      limit: params?.limit,
+      cursor: params?.cursor,
+      status: params?.status,
+    });
   }
 }

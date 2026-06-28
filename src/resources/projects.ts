@@ -8,6 +8,8 @@ import type {
   ImportProjectResponse,
   ImportStatusResponse,
   RetryImportResponse,
+  FieldCatalogParams,
+  FieldCatalogResponse,
 } from '../types/projects';
 import { poll, type PollingOptions } from '../polling';
 
@@ -42,6 +44,19 @@ export class Projects {
   async retryImport(projectId: string): Promise<MigmaResult<RetryImportResponse>> {
     return this.client.post<RetryImportResponse>(
       `/projects/import/${projectId}/retry`
+    );
+  }
+
+  async fieldCatalog(
+    projectId: string,
+    params?: FieldCatalogParams
+  ): Promise<MigmaResult<FieldCatalogResponse>> {
+    return this.client.get<FieldCatalogResponse>(
+      `/projects/${projectId}/field-catalog`,
+      {
+        segmentId: params?.segmentId,
+        tag: params?.tag,
+      }
     );
   }
 

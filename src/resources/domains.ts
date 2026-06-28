@@ -7,6 +7,9 @@ import type {
   DomainVerificationResult,
   DomainAvailability,
   CreateManagedDomainParams,
+  ProvisionStreamParams,
+  SetupDomainParams,
+  SetupDomainResponse,
   DomainDeleteResponse,
 } from '../types/domains';
 
@@ -51,5 +54,23 @@ export class Domains {
 
   async removeManaged(domain: string): Promise<MigmaResult<DomainDeleteResponse>> {
     return this.client.delete<DomainDeleteResponse>(`/domains/managed/${domain}`);
+  }
+
+  /**
+   * Provision a transactional or marketing stream identity on a domain you own.
+   * Creates notify.<rootDomain> (transactional) or send.<rootDomain> (marketing)
+   * to isolate transactional reputation from marketing. Returns DNS records to publish.
+   */
+  async provisionStream(params: ProvisionStreamParams): Promise<MigmaResult<Domain>> {
+    return this.client.post<Domain>('/domains/streams', params as unknown as Record<string, unknown>);
+  }
+
+  /**
+   * Provision BOTH stream identities for a domain you own in one call:
+   * send.<rootDomain> (marketing) and notify.<rootDomain> (transactional).
+   * Idempotent. Returns both domains with DNS records to publish.
+   */
+  async setup(params: SetupDomainParams): Promise<MigmaResult<SetupDomainResponse>> {
+    return this.client.post<SetupDomainResponse>('/domains/setup', params as unknown as Record<string, unknown>);
   }
 }

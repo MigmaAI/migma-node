@@ -1,9 +1,9 @@
 import type { MigmaClient } from '../client';
 import type { MigmaResult } from '../types/common';
 import type {
-  Webhook,
   WebhookDetail,
   CreateWebhookParams,
+  CreateWebhookResponse,
   UpdateWebhookParams,
   ListWebhooksResponse,
   WebhookTestResult,
@@ -18,8 +18,8 @@ export class Webhooks {
     return this.client.get<ListWebhooksResponse>('/webhooks');
   }
 
-  async create(params: CreateWebhookParams): Promise<MigmaResult<Webhook>> {
-    return this.client.post<Webhook>('/webhooks', params as unknown as Record<string, unknown>);
+  async create(params: CreateWebhookParams): Promise<MigmaResult<CreateWebhookResponse>> {
+    return this.client.post<CreateWebhookResponse>('/webhooks', params as unknown as Record<string, unknown>);
   }
 
   async get(webhookId: string): Promise<MigmaResult<WebhookDetail>> {

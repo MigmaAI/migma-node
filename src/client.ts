@@ -1,3 +1,4 @@
+import { detectAgentId } from './agent-identity';
 import { MigmaError, MigmaErrorCode } from './errors';
 import type { ApiResponse, MigmaResult } from './types/common';
 
@@ -14,15 +15,37 @@ interface RequestOptions {
   path: string;
   body?: Record<string, unknown>;
   query?: Record<string, string | number | boolean | undefined>;
+  headers?: Record<string, string>;
+}
+
+/** Per-call options for write methods (POST/PATCH/DELETE). */
+export interface CallOptions {
+  /**
+   * Optional Idempotency-Key (max 100 chars). Same key + same body within 24h
+   * replays the original response; a different body returns 409 IDEMPOTENCY_CONFLICT.
+   * Reused across the SDK's own automatic retries so a retried call never duplicates.
+   */
+  idempotencyKey?: string;
 }
 
 export class MigmaClient {
   private readonly apiKey: string;
   private readonly config: ClientConfig;
+  private readonly headers: Record<string, string>;
 
   constructor(apiKey: string, config: ClientConfig) {
     this.apiKey = apiKey;
     this.config = config;
+
+    this.headers = {
+      Authorization: `Bearer ${this.apiKey}`,
+      'Content-Type': 'application/json',
+      'User-Agent': 'migma-node/1.0.0',
+    };
+    const agentId = detectAgentId();
+    if (agentId) {
+      this.headers['X-Agent-Id'] = agentId;
+    }
   }
 
   async request<T>(options: RequestOptions): Promise<MigmaResult<T>> {
@@ -35,11 +58,7 @@ export class MigmaClient {
       try {
         const response = await fetch(url, {
           method: options.method,
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-            'User-Agent': 'migma-node/1.0.0',
-          },
+          headers: { ...this.headers, ...options.headers },
           body: options.body ? JSON.stringify(options.body) : undefined,
         });
 
@@ -97,11 +116,7 @@ export class MigmaClient {
     try {
       const response = await fetch(url, {
         method: options.method,
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-          'User-Agent': 'migma-node/1.0.0',
-        },
+        headers: { ...this.headers, ...options.headers },
         body: options.body ? JSON.stringify(options.body) : undefined,
       });
 
@@ -147,12 +162,12 @@ export class MigmaClient {
     return this.requestWithCount<T>({ method: 'GET', path, query });
   }
 
-  async post<T>(path: string, body?: Record<string, unknown>) {
-    return this.request<T>({ method: 'POST', path, body });
+  async post<T>(path: string, body?: Record<string, unknown>, options?: CallOptions) {
+    return this.request<T>({ method: 'POST', path, body, headers: this.callHeaders(options) });
   }
 
-  async patch<T>(path: string, body?: Record<string, unknown>) {
-    return this.request<T>({ method: 'PATCH', path, body });
+  async patch<T>(path: string, body?: Record<string, unknown>, options?: CallOptions) {
+    return this.request<T>({ method: 'PATCH', path, body, headers: this.callHeaders(options) });
   }
 
   async put<T>(path: string, body?: Record<string, unknown>) {
@@ -161,9 +176,17 @@ export class MigmaClient {
 
   async delete<T>(
     path: string,
-    query?: Record<string, string | number | boolean | undefined>
+    query?: Record<string, string | number | boolean | undefined>,
+    options?: CallOptions
   ) {
-    return this.request<T>({ method: 'DELETE', path, query });
+    return this.request<T>({ method: 'DELETE', path, query, headers: this.callHeaders(options) });
+  }
+
+  private callHeaders(options?: CallOptions): Record<string, string> | undefined {
+    if (options?.idempotencyKey) {
+      return { 'Idempotency-Key': options.idempotencyKey };
+    }
+    return undefined;
   }
 
   private buildUrl(

@@ -36,7 +36,7 @@ const { data: email } = await migma.emails.generateAndWait({
 if (email?.status === 'completed') {
   console.log('Subject:', email.result.subject);
   console.log('HTML:', email.result.html); // primary email HTML
-  console.log('Artifact:', email.result.emails[0].artifactId);
+  console.log('Email ID:', email.result.emails[0].emailId);
 }
 ```
 
@@ -66,20 +66,20 @@ const { data: email } = await migma.emails.generateAndWait({
 
 if (!email?.result) throw new Error('Email generation failed');
 
-// 3. Send it — artifactId works for single emails and series slots
+// 3. Send it — emailId works for single emails and series slots
 const selectedEmail = email.result.emails[0];
-if (!selectedEmail.artifactId) throw new Error('No artifactId returned');
+if (!selectedEmail.emailId) throw new Error('No emailId returned');
 await migma.sending.send({
   recipientType: 'email',
   recipientEmail: 'sarah@example.com',
   from: 'hello@yourcompany.migma.email',
   fromName: 'Your Company',
   subject: selectedEmail.subject,
-  artifactId: selectedEmail.artifactId,
+  emailId: selectedEmail.emailId,
 });
 
 // conversationId also works for single-email conversations.
-// For multi-slot emails or series, use result.emails[].artifactId.
+// For multi-slot emails or series, use result.emails[].emailId.
 ```
 
 [Full OpenClaw tutorial](https://docs.migma.ai/tutorials/send-emails-from-openclaw)
@@ -126,6 +126,7 @@ Every method returns `{ data, error }` instead of throwing. TypeScript narrows t
 ```typescript
 const { data, error } = await migma.contacts.create({
   email: 'john@example.com',
+  status: 'subscribed', // only for contacts with marketing consent
   projectId: 'proj_abc123',
 });
 
@@ -206,7 +207,7 @@ const { data: contact } = await migma.contacts.create({
 // List with filters
 const { data: contacts } = await migma.contacts.list({
   projectId: 'proj_abc123',
-  status: 'active',
+  status: 'subscribed',
   tags: 'newsletter',
   limit: 50,
 });
@@ -219,6 +220,19 @@ const { data: result } = await migma.contacts.bulkImport({
   ],
   projectId: 'proj_abc123',
 });
+
+// Batch delete by email (up to 1000; unmatched emails come back in notFound)
+const { data: deletion } = await migma.contacts.bulkDeleteByEmail({
+  emails: ['a@example.com', 'b@example.com'],
+  projectId: 'proj_abc123',
+});
+
+// Safe retries: pass an Idempotency-Key so a retried write never duplicates.
+// Same key + same body within 24h replays the original response.
+await migma.contacts.create(
+  { email: 'jane@example.com', projectId: 'proj_abc123' },
+  { idempotencyKey: 'signup-jane@example.com-1779292800' },
+);
 ```
 
 [Contacts API Reference](https://docs.migma.ai/api-reference/contacts/get-contact)
@@ -228,14 +242,14 @@ const { data: result } = await migma.contacts.bulkImport({
 Send to a single recipient, segment, tag, or full audience.
 
 ```typescript
-// Send a generated email by artifactId
+// Send a generated email by emailId
 await migma.sending.send({
   recipientType: 'email',
   recipientEmail: 'user@example.com',
   from: 'hello@yourdomain.com',
   fromName: 'Your Company',
   subject: 'Welcome!',
-  artifactId: 'artifact_abc123',
+  emailId: 'email_abc123',
 });
 
 // Single-email conversations can also be sent by conversationId.
@@ -255,7 +269,7 @@ await migma.sending.send({
   from: 'hello@yourdomain.com',
   fromName: 'Your Company',
   subject: 'Big Announcement',
-  artifactId: 'artifact_abc123',
+  emailId: 'email_abc123',
 });
 
 // Single sends are automatically transactional — no flag needed
@@ -266,7 +280,7 @@ await migma.sending.send({
   from: 'noreply@yourdomain.com',
   fromName: 'Your Company',
   subject: 'Your subscription renews tomorrow',
-  artifactId: 'artifact_abc123',
+  emailId: 'email_abc123',
   transactional: true,
 });
 ```
@@ -275,7 +289,7 @@ await migma.sending.send({
 
 ### Generated Series and Editing
 
-Generate a series with `count`, then use each email's `artifactId` to fetch, compile, update, or send one slot.
+Generate a series with `count`, then use each email's `emailId` to fetch, prompt-edit, or send one email.
 
 ```typescript
 const { data: series } = await migma.emails.generateAndWait({
@@ -285,20 +299,134 @@ const { data: series } = await migma.emails.generateAndWait({
 });
 
 for (const generated of series?.result?.emails ?? []) {
-  console.log(generated.slot, generated.artifactId, generated.html);
+  console.log(generated.slot, generated.emailId, generated.html);
+  console.log(generated.screenshotUrl);
 }
 
-const { data: email } = await migma.emails.get('artifact_abc123');
-if (!email?.source) throw new Error('Editable source unavailable');
+const { data: email } = await migma.emails.get('email_abc123');
+console.log(email?.html);
 
-await migma.emails.compile('artifact_abc123', {
-  source: email.source.replace('Start now', 'Start your trial'),
-});
-
-await migma.emails.update('artifact_abc123', {
-  source: email.source.replace('Start now', 'Start your trial'),
+await migma.emails.edit('email_abc123', {
+  prompt: 'Change the CTA from "Start now" to "Start your trial"',
 });
 ```
+
+### Campaigns
+
+Create a campaign from a generated email, send or schedule it, then read its
+engagement stats and per-recipient logs.
+
+```typescript
+// Create from a generated email
+const { data: campaign } = await migma.campaigns.create({
+  projectId: 'proj_abc123',
+  name: 'Spring Launch',
+  conversationId: 'conv_abc123',
+  emailId: 'email_abc123',
+  subject: 'Spring is here',
+  from: 'hello@yourdomain.com',
+  fromName: 'Your Brand',
+  recipientType: 'audience',
+  recipientId: 'aud_abc123',
+});
+
+// Send now (idempotency key recommended — see below)
+await migma.campaigns.send(campaign.id, {
+  idempotencyKey: `campaign-send-${campaign.id}`,
+});
+
+// Or schedule for later
+await migma.campaigns.schedule(
+  campaign.id,
+  { scheduledAt: '2026-07-01T15:00:00Z', scheduledTimezone: 'America/New_York' },
+  { idempotencyKey: `campaign-send-${campaign.id}` },
+);
+
+// Aggregated engagement metrics (cached, may be slightly stale)
+const { data: stats } = await migma.campaigns.stats(campaign.id);
+console.log(stats?.openRate, stats?.clickRate, stats?.lastUpdated);
+
+// Per-recipient logs, cursor-paginated and optionally filtered by status
+const { data: logs } = await migma.campaigns.logs(campaign.id, {
+  status: 'opened',
+  limit: 50,
+});
+for (const row of logs?.emails ?? []) {
+  console.log(row.to_email, row.status, row.opened_at);
+}
+if (logs?.hasMore) {
+  await migma.campaigns.logs(campaign.id, { cursor: logs.nextCursor ?? undefined });
+}
+```
+
+Campaign stats are sourced from the email tracking worker and cached on the
+campaign, so they can lag live activity. `botOpens`, `botClicks`, and `mppOpens`
+reflect Apple Mail Privacy Protection and bot detection when that data is
+available. Log rows come straight from the tracking store, so their field names
+are `snake_case` (`to_email`, `opened_at`, `bounce_type`) unlike the rest of the
+API.
+
+[Campaigns Guide](https://docs.migma.ai/campaigns/overview)
+
+### Idempotency
+
+Write methods accept an optional trailing `CallOptions` argument carrying an
+`idempotencyKey`. The key is sent as the `Idempotency-Key` header (max 100
+characters) and is scoped to your API key for 24 hours:
+
+- **Same key + same body** within 24h replays the original response (the server
+  marks the replay with an `Idempotent-Replayed: true` header).
+- **Same key + different body** returns `409 IDEMPOTENCY_CONFLICT`.
+- `429` and `5xx` responses are never cached, so they stay safe to retry — and
+  the SDK reuses your key across its own automatic retries, so a retried call
+  never duplicates.
+
+```typescript
+// Sending — key on the recipient + send time
+await migma.sending.send(
+  {
+    recipientType: 'email',
+    recipientEmail: 'user@example.com',
+    from: 'hello@yourdomain.com',
+    fromName: 'Your Brand',
+    subject: 'Welcome!',
+    emailId: 'email_abc123',
+  },
+  { idempotencyKey: 'send-email_abc123-user@example.com-now' },
+);
+
+// Campaign send — one key per campaign send
+await migma.campaigns.send('camp_abc123', {
+  idempotencyKey: 'campaign-send-camp_abc123',
+});
+
+// Email generation — key on project + the turn/prompt
+await migma.emails.generate(
+  { projectId: 'proj_abc123', prompt: 'Welcome email' },
+  { idempotencyKey: 'email-gen-proj_abc123-welcome' },
+);
+
+// Contact add — key on the email
+await migma.contacts.create(
+  { email: 'jane@example.com', projectId: 'proj_abc123' },
+  { idempotencyKey: 'contact-jane@example.com' },
+);
+```
+
+**Choose a deterministic key** so the same logical operation produces the same
+key on every attempt:
+
+- send: `send-<emailId>-<recipientId|to>-<scheduledAt|"now">`
+- campaign send: `campaign-send-<campaignId>`
+- email generate: `email-gen-<projectId>-<turnOrPromptHash>`
+- contact add: `contact-<email>`
+
+**Anti-patterns to avoid:**
+
+- Don't generate the key with `uuid()` or `Date.now()` per call — a fresh key
+  every attempt defeats deduplication across retries and process restarts.
+- Don't hash the request body to build the key — identical retries you *want*
+  deduplicated would each get a different key, and you lose the conflict signal.
 
 ### Email Validation
 
@@ -377,6 +505,14 @@ const { data: avail } = await migma.domains.checkAvailability('mycompany');
 if (avail.available) {
   await migma.domains.createManaged({ prefix: 'mycompany' });
 }
+
+// Provision a transactional stream (notify.example.com) to isolate
+// transactional reputation from marketing, then publish the returned DNS records
+await migma.domains.provisionStream({ rootDomain: 'example.com', stream: 'transactional' });
+
+// Or provision both streams (send. marketing + notify. transactional) in one call
+const { data } = await migma.domains.setup({ rootDomain: 'example.com' });
+// data.marketing, data.transactional
 ```
 
 [Domains API Reference](https://docs.migma.ai/api-reference/domains/list-domains)
@@ -394,7 +530,19 @@ const { data: tag } = await migma.tags.create({
 // Segments
 const { data: segment } = await migma.segments.create({
   name: 'Active US Customers',
-  filters: { status: 'subscribed', customFields: { country: ['US'] } },
+  filters: {
+    status: 'subscribed',
+    fields: [{ key: 'country', mode: 'is', values: ['US'] }],
+    activity: [{ action: 'opened', channel: 'email', mode: 'within', unit: 'days', amount: 30 }],
+  },
+  projectId: 'proj_abc123',
+});
+
+const { data: campaignSegment } = await migma.segments.create({
+  name: 'Campaign openers',
+  filters: {
+    activity: [{ action: 'opened', channel: 'email', mode: 'within', unit: 'days', amount: 14, campaignId: 'cmp_123' }],
+  },
   projectId: 'proj_abc123',
 });
 
@@ -457,12 +605,13 @@ await migma.images.updateLogos('proj_abc123', {
 | `migma.segments` | `create` `list` `get` `update` `remove` | [Segments](https://docs.migma.ai/api-reference/audiences/list-audiences) |
 | `migma.topics` | `create` `list` `get` `update` `remove` `subscribe` `unsubscribe` | [Topics](https://docs.migma.ai/api-reference/topics/list-topics) |
 | `migma.sending` | `send` `getBatchStatus` | [Sending](https://docs.migma.ai/api-reference/sending/send-email) |
-| `migma.projects` | `list` `get` `import` `getImportStatus` `retryImport` `importAndWait` | [Projects](https://docs.migma.ai/api-reference/projects/list-projects) |
-| `migma.emails` | `generate` `getGenerationStatus` `generateAndWait` `sendTest` | [Email Generation](https://docs.migma.ai/api-reference/email/generate-email-async) |
+| `migma.projects` | `list` `get` `import` `getImportStatus` `retryImport` `fieldCatalog` `importAndWait` | [Projects](https://docs.migma.ai/api-reference/projects/list-projects) |
+| `migma.emails` | `generate` `getGenerationStatus` `generateAndWait` `sendTest` `get` `edit` | [Email Generation](https://docs.migma.ai/api-reference/email/generate-email-async) |
+| `migma.campaigns` | `list` `create` `get` `send` `schedule` `cancel` `stats` `logs` `archive` `unarchive` | [Campaigns](https://docs.migma.ai/campaigns/overview) |
 | `migma.validation` | `all` `compatibility` `links` `spelling` `deliverability` | [Validation](https://docs.migma.ai/api-reference/email-validation/run-all-validation-checks) |
 | `migma.previews` | `create` `get` `getStatus` `getDevice` `getSupportedDevices` `createAndWait` | [Previews](https://docs.migma.ai/api-reference/email-previews/create-email-preview) |
 | `migma.export` | `getFormats` `getStatus` `html` `mjml` `pdf` `klaviyo` `mailchimp` `hubspot` | [Export](https://docs.migma.ai/api-reference/export/list-export-formats) |
-| `migma.domains` | `create` `list` `get` `verify` `update` `remove` `checkAvailability` `listManaged` `createManaged` `removeManaged` | [Domains](https://docs.migma.ai/api-reference/domains/list-domains) |
+| `migma.domains` | `create` `list` `get` `verify` `update` `remove` `checkAvailability` `listManaged` `createManaged` `removeManaged` `provisionStream` `setup` | [Domains](https://docs.migma.ai/api-reference/domains/list-domains) |
 | `migma.webhooks` | `create` `list` `get` `update` `remove` `test` `getDeliveries` `getEvents` `getStats` | [Webhooks](https://docs.migma.ai/webhooks) |
 | `migma.knowledgeBase` | `list` `add` `update` `remove` | [API Ref](https://docs.migma.ai/api-reference/introduction) |
 | `migma.images` | `add` `update` `remove` `updateLogos` | [API Ref](https://docs.migma.ai/api-reference/introduction) |

@@ -32,7 +32,7 @@ function newClient(): { client: Migma; fetchMock: FetchMock } {
   return { client, fetchMock };
 }
 
-describe('client.emails public generation and artifact APIs', () => {
+describe('client.emails public generation and email APIs', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
@@ -72,7 +72,7 @@ describe('client.emails public generation and artifact APIs', () => {
     });
   });
 
-  it('getGenerationStatus surfaces result.emails artifact data', async () => {
+  it('getGenerationStatus surfaces result.emails email data', async () => {
     const { client, fetchMock } = newClient();
     fetchMock.mockResolvedValueOnce(
       ok({
@@ -86,7 +86,8 @@ describe('client.emails public generation and artifact APIs', () => {
           html: '<html>one</html>',
           emails: [
             {
-              artifactId: 'art_1',
+              id: 'art_1',
+              emailId: 'art_1',
               conversationId: 'conv_1',
               messageId: 'msg_1',
               slotIdx: 0,
@@ -94,8 +95,8 @@ describe('client.emails public generation and artifact APIs', () => {
               subject: 'Welcome',
               preheader: 'Start here',
               html: '<html>one</html>',
-              source: 'Email { }',
               status: 'ready',
+              screenshotUrl: null,
             },
           ],
           screenshotUrl: null,
@@ -109,7 +110,7 @@ describe('client.emails public generation and artifact APIs', () => {
     const res = await client.emails.getGenerationStatus('conv_1');
 
     expect(res.error).toBeNull();
-    expect(res.data?.result?.emails[0].artifactId).toBe('art_1');
+    expect(res.data?.result?.emails[0].emailId).toBe('art_1');
     expect(res.data?.result?.emails[0].html).toBe('<html>one</html>');
 
     const { url, init } = lastCall(fetchMock);
@@ -117,22 +118,21 @@ describe('client.emails public generation and artifact APIs', () => {
     expect(url).toBe('https://api.test.local/v1/projects/emails/conv_1/status');
   });
 
-  it('get(artifactId) calls GET /emails/:artifactId', async () => {
+  it('get(emailId) calls GET /emails/:emailId', async () => {
     const { client, fetchMock } = newClient();
     fetchMock.mockResolvedValueOnce(
       ok({
-        artifactId: 'art_1',
+        id: 'art_1',
+        emailId: 'art_1',
         conversationId: 'conv_1',
         messageId: 'msg_1',
         slotIdx: 0,
         slotUuid: null,
         status: 'ready',
-        engine: 'zinn',
         subject: 'Welcome',
         preheader: 'Start here',
         html: '<html></html>',
-        source: 'Email { }',
-        templateVariables: [],
+        screenshotUrl: null,
         warnings: [],
         thumbnailUrl: null,
         updatedAt: '2026-01-01T00:00:00.000Z',
@@ -142,72 +142,111 @@ describe('client.emails public generation and artifact APIs', () => {
     const res = await client.emails.get('art_1');
 
     expect(res.error).toBeNull();
-    expect(res.data?.source).toBe('Email { }');
+    expect(res.data?.html).toBe('<html></html>');
 
     const { url, init } = lastCall(fetchMock);
     expect(init.method).toBe('GET');
     expect(url).toBe('https://api.test.local/v1/emails/art_1');
   });
 
-  it('update(artifactId, source) calls PATCH /emails/:artifactId', async () => {
+  it('edit(emailId, prompt) calls POST /emails/:emailId/edit', async () => {
     const { client, fetchMock } = newClient();
     fetchMock.mockResolvedValueOnce(
       ok({
-        artifactId: 'art_1',
+        id: 'art_1',
+        emailId: 'art_1',
         conversationId: 'conv_1',
         messageId: 'msg_1',
         slotIdx: 0,
         slotUuid: null,
         status: 'ready',
-        engine: 'zinn',
         subject: 'Updated',
         preheader: '',
         html: '<html>updated</html>',
-        source: 'Email { updated }',
-        templateVariables: [],
+        screenshotUrl: null,
         warnings: [],
         thumbnailUrl: null,
         updatedAt: '2026-01-01T00:00:00.000Z',
       }),
     );
 
-    const res = await client.emails.update('art_1', {
-      source: 'Email { updated }',
-      label: 'copy edit',
+    const res = await client.emails.edit('art_1', {
+      prompt: 'Make it shorter',
     });
 
     expect(res.error).toBeNull();
     expect(res.data?.html).toBe('<html>updated</html>');
 
     const { url, init } = lastCall(fetchMock);
-    expect(init.method).toBe('PATCH');
-    expect(url).toBe('https://api.test.local/v1/emails/art_1');
+    expect(init.method).toBe('POST');
+    expect(url).toBe('https://api.test.local/v1/emails/art_1/edit');
     expect(JSON.parse(init.body as string)).toEqual({
-      source: 'Email { updated }',
-      label: 'copy edit',
+      prompt: 'Make it shorter',
     });
   });
+});
 
-  it('compile(artifactId, source) calls POST /emails/:artifactId/compile', async () => {
+describe('client v1 resource alignment', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('projects.fieldCatalog calls GET /projects/:projectId/field-catalog with scope params', async () => {
     const { client, fetchMock } = newClient();
     fetchMock.mockResolvedValueOnce(
-      ok({ artifactId: 'art_1', html: '<html>preview</html>', warnings: [] }),
+      ok({
+        entries: [
+          {
+            key: 'firstName',
+            label: 'First name',
+            type: 'string',
+            fillRate: 0.92,
+            sample: ['Sarah'],
+            auto: true,
+          },
+        ],
+        totalSubscribers: 25,
+        computedAt: '2026-01-01T00:00:00.000Z',
+      }),
     );
 
-    const res = await client.emails.compile('art_1', {
-      source: 'Email { preview }',
-      vars: { firstName: 'Sarah' },
+    const res = await client.projects.fieldCatalog('proj_1', {
+      segmentId: 'seg_1',
+      tag: 'tag_1',
     });
 
     expect(res.error).toBeNull();
-    expect(res.data?.html).toBe('<html>preview</html>');
+    expect(res.data?.entries[0].key).toBe('firstName');
 
     const { url, init } = lastCall(fetchMock);
-    expect(init.method).toBe('POST');
-    expect(url).toBe('https://api.test.local/v1/emails/art_1/compile');
-    expect(JSON.parse(init.body as string)).toEqual({
-      source: 'Email { preview }',
-      vars: { firstName: 'Sarah' },
+    expect(init.method).toBe('GET');
+    expect(url).toBe('https://api.test.local/v1/projects/proj_1/field-catalog?segmentId=seg_1&tag=tag_1');
+  });
+
+  it('campaigns list/archive/unarchive call the public v1 campaign routes', async () => {
+    const { client, fetchMock } = newClient();
+    fetchMock
+      .mockResolvedValueOnce(ok({ campaigns: [], total: 0 }))
+      .mockResolvedValueOnce(ok({ id: 'camp_1', archived: true }))
+      .mockResolvedValueOnce(ok({ id: 'camp_1', archived: false }));
+
+    await client.campaigns.list({
+      projectId: 'proj_1',
+      status: 'draft',
+      archived: true,
+      page: 2,
+      limit: 10,
     });
+    await client.campaigns.archive('camp_1');
+    await client.campaigns.unarchive('camp_1');
+
+    const calls = fetchMock.mock.calls as Array<[string, RequestInit]>;
+    expect(calls[0][0]).toBe('https://api.test.local/v1/campaigns?projectId=proj_1&status=draft&page=2&limit=10&archived=true');
+    expect(calls[0][1].method).toBe('GET');
+    expect(calls[1][0]).toBe('https://api.test.local/v1/campaigns/camp_1/archive');
+    expect(calls[1][1].method).toBe('POST');
+    expect(calls[2][0]).toBe('https://api.test.local/v1/campaigns/camp_1/unarchive');
+    expect(calls[2][1].method).toBe('POST');
   });
 });

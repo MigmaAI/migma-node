@@ -1,10 +1,11 @@
-export type ContactStatus = 'active' | 'unsubscribed' | 'bounced' | 'complained';
+export type ContactStatus = 'subscribed' | 'unsubscribed' | 'bounced' | 'non-subscribed';
 
 export interface Contact {
   id: string;
   email: string;
   firstName?: string;
   lastName?: string;
+  phone?: string;
   country?: string;
   language?: string;
   tags: string[];
@@ -19,18 +20,21 @@ export interface CreateContactParams {
   email: string;
   firstName?: string;
   lastName?: string;
+  phone?: string;
   /** ISO 3166-1 alpha-2 country code (e.g., US, CA, GB) */
   country?: string;
   /** Language code in ISO 639-1 or BCP 47 format (e.g., en, en-US) */
   language?: string;
   tags?: string[];
   customFields?: Record<string, unknown>;
+  status?: ContactStatus;
   projectId: string;
 }
 
 export interface UpdateContactParams {
   firstName?: string;
   lastName?: string;
+  phone?: string | null;
   country?: string;
   language?: string;
   tags?: string[];
@@ -57,10 +61,12 @@ export interface BulkImportContactItem {
   email: string;
   firstName?: string;
   lastName?: string;
+  phone?: string;
   country?: string;
   language?: string;
   tags?: string[];
   customFields?: Record<string, unknown>;
+  status?: ContactStatus;
 }
 
 export interface BulkImportParams {
@@ -93,6 +99,19 @@ export interface BulkImportJobStatus {
   error: string | null;
   createdAt: string;
   completedAt: string | null;
+}
+
+export interface BatchDeleteContactsParams {
+  /** Email addresses to delete (1-1000 per request). */
+  emails: string[];
+  projectId: string;
+}
+
+export interface BatchDeleteResponse {
+  /** Number of contacts actually deleted. */
+  deleted: number;
+  /** Submitted emails with no matching contact (not an error). */
+  notFound: string[];
 }
 
 export interface ChangeStatusParams {

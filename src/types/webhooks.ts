@@ -36,9 +36,19 @@ export interface Webhook {
   url: string;
   events: WebhookEventType[];
   active: boolean;
-  secret: string;
+  /** Whether a signing secret is configured. Returned by create and get. */
+  secretConfigured?: boolean;
   description?: string;
   createdAt: string;
+}
+
+export interface CreateWebhookResponse extends Webhook {
+  /**
+   * The signing secret, returned ONCE at creation. Store it now — GET and list
+   * never return it. To rotate, delete and recreate the webhook.
+   */
+  secret: string;
+  secretConfigured: boolean;
 }
 
 export interface WebhookDetail extends Webhook {

@@ -50,6 +50,38 @@ export interface CreateManagedDomainParams {
   region?: string;
 }
 
+export type DomainStream = 'transactional' | 'marketing';
+
+export interface ProvisionStreamParams {
+  /** Apex domain you own, e.g. 'acme.com'. */
+  rootDomain: string;
+  /** 'transactional' provisions notify.<rootDomain>; 'marketing' provisions send.<rootDomain>. */
+  stream: DomainStream;
+  region?: 'us-east-1' | 'eu-west-1';
+  /** Show the apex domain in the From header when its DMARC passes. */
+  vanityRootFrom?: boolean;
+}
+
+export interface SetupDomainParams {
+  /** Apex domain you own, e.g. 'acme.com'. */
+  rootDomain: string;
+  region?: 'us-east-1' | 'eu-west-1';
+  /** Default From display name applied to both provisioned streams. */
+  fromName?: string;
+  /** Associate the provisioned streams with a project. */
+  projectId?: string;
+  /** Show the apex domain in the From header when its DMARC passes. Defaults to true. */
+  vanityRootFrom?: boolean;
+}
+
+/** Both stream identities provisioned for a root domain by `domains.setup`. */
+export interface SetupDomainResponse {
+  /** send.<rootDomain> marketing stream identity. */
+  marketing: Domain;
+  /** notify.<rootDomain> transactional stream identity. */
+  transactional: Domain;
+}
+
 export interface DomainDeleteResponse {
   domain: string;
   deleted: boolean;

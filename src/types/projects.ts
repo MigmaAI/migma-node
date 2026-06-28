@@ -67,3 +67,25 @@ export interface RetryImportResponse {
   status: string;
   message: string;
 }
+
+export interface FieldCatalogParams {
+  segmentId?: string;
+  tag?: string;
+}
+
+export type FieldCatalogEntryType = 'string' | 'number' | 'boolean' | 'date' | 'url' | 'unknown';
+
+export interface FieldCatalogEntry {
+  key: string;
+  label: string;
+  type: FieldCatalogEntryType;
+  fillRate: number;
+  sample: string[];
+  auto: boolean;
+}
+
+export interface FieldCatalogResponse {
+  entries: FieldCatalogEntry[];
+  totalSubscribers: number;
+  computedAt: string;
+}
