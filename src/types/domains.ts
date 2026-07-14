@@ -24,7 +24,7 @@ export interface Domain {
 
 export interface CreateDomainParams {
   domain: string;
-  region?: 'us-east-1' | 'eu-west-1';
+  region?: 'us-east-1'; // only us-east-1 is currently open for new domains
 }
 
 export interface UpdateDomainParams {
@@ -57,7 +57,7 @@ export interface ProvisionStreamParams {
   rootDomain: string;
   /** 'transactional' provisions notify.<rootDomain>; 'marketing' provisions send.<rootDomain>. */
   stream: DomainStream;
-  region?: 'us-east-1' | 'eu-west-1';
+  region?: 'us-east-1'; // only us-east-1 is currently open for new domains
   /** Show the apex domain in the From header when its DMARC passes. */
   vanityRootFrom?: boolean;
 }
@@ -65,7 +65,7 @@ export interface ProvisionStreamParams {
 export interface SetupDomainParams {
   /** Apex domain you own, e.g. 'acme.com'. */
   rootDomain: string;
-  region?: 'us-east-1' | 'eu-west-1';
+  region?: 'us-east-1'; // only us-east-1 is currently open for new domains
   /** Default From display name applied to both provisioned streams. */
   fromName?: string;
   /** Associate the provisioned streams with a project. */
