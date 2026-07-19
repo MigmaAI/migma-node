@@ -14,3 +14,4 @@ export * from './webhooks';
 export * from './knowledge-base';
 export * from './images';
 export * from './campaigns';
+export * from './metrics';

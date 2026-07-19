@@ -1,4 +1,4 @@
-export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'throttled' | 'ab_testing' | 'sent' | 'failed' | 'cancelled';
+export type CampaignStatus = 'draft' | 'pending_review' | 'scheduled' | 'sending' | 'throttled' | 'ab_testing' | 'sent' | 'failed' | 'cancelled';
 
 export interface Campaign {
   id: string;
@@ -126,7 +126,7 @@ export interface CampaignLog {
 export interface CampaignLogsParams {
   limit?: number;
   cursor?: string;
-  status?: 'delivered' | 'opened' | 'clicked' | 'bounced' | 'spam_report';
+  status?: 'delivered' | 'opened' | 'clicked' | 'bounced' | 'complained';
 }
 
 export interface CampaignLogsResponse {

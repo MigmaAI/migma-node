@@ -14,6 +14,7 @@ import { Webhooks } from './resources/webhooks';
 import { KnowledgeBase } from './resources/knowledge-base';
 import { Images } from './resources/images';
 import { Campaigns } from './resources/campaigns';
+import { Metrics } from './resources/metrics';
 
 export interface MigmaConfig {
   /** API base URL. Default: 'https://api.migma.ai/v1' */
@@ -42,6 +43,7 @@ export class Migma {
   readonly knowledgeBase: KnowledgeBase;
   readonly images: Images;
   readonly campaigns: Campaigns;
+  readonly metrics: Metrics;
 
   constructor(apiKey: string, config?: MigmaConfig) {
     if (!apiKey) {
@@ -71,5 +73,6 @@ export class Migma {
     this.knowledgeBase = new KnowledgeBase(this.client);
     this.images = new Images(this.client);
     this.campaigns = new Campaigns(this.client);
+    this.metrics = new Metrics(this.client);
   }
 }
