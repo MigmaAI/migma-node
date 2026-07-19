@@ -97,7 +97,7 @@ await migma.sending.send({
 
 ## Features
 
-- Full coverage of all Migma API v1 endpoints (80+ methods across 15 resources)
+- Full coverage of all Migma API v1 endpoints (80+ methods across 16 resources)
 - TypeScript-first with complete type definitions
 - `{ data, error }` return pattern — methods never throw
 - Automatic retries with exponential backoff on 5xx/429
@@ -227,6 +227,27 @@ const { data: deletion } = await migma.contacts.bulkDeleteByEmail({
   projectId: 'proj_abc123',
 });
 
+// Import contacts from a CSV file (multipart upload, processed in the background).
+// `file` accepts a Blob/File, a Buffer, or a ReadableStream.
+import { readFileSync } from 'node:fs';
+
+const { data: job } = await migma.contacts.imports.create({
+  file: readFileSync('./contacts.csv'),
+  projectId: 'proj_abc123',
+  columnMap: {
+    email: 'Email',
+    firstName: 'First Name',
+    customFields: { plan: 'Plan' },
+  },
+  onConflict: 'upsert',
+  tags: ['newsletter'],
+});
+
+// Poll for status + counts until the import finishes.
+const { data: status } = await migma.contacts.imports.get(job!.id);
+// status.status → 'pending' | 'processing' | 'completed' | 'failed'
+// status.counts → { total, created, updated, skipped, failed }
+
 // Safe retries: pass an Idempotency-Key so a retried write never duplicates.
 // Same key + same body within 24h replays the original response.
 await migma.contacts.create(
@@ -286,6 +307,23 @@ await migma.sending.send({
 ```
 
 [Sending API Reference](https://docs.migma.ai/api-reference/sending/send-email)
+
+### Sending Metrics
+
+Read account sending totals, delivery outcomes, and remaining daily and monthly capacity.
+
+```typescript
+const { data: metrics } = await migma.metrics.sending({ months: 6 });
+
+console.log(metrics?.period, metrics?.monthly.sent, metrics?.remainingMonth);
+console.log(metrics?.today.sent, metrics?.today.remainingToday);
+
+for (const month of metrics?.history ?? []) {
+  console.log(month.period, month.sent, month.delivered, month.bounced, month.complained);
+}
+```
+
+Omit `months` when you only need the current month and today's capacity.
 
 ### Generated Series and Editing
 
@@ -601,10 +639,12 @@ await migma.images.updateLogos('proj_abc123', {
 | Resource | Methods | Docs |
 |----------|---------|------|
 | `migma.contacts` | `create` `list` `get` `update` `remove` `bulkImport` `getBulkImportStatus` `changeStatus` | [Contacts](https://docs.migma.ai/api-reference/contacts/get-contact) |
+| `migma.contacts.imports` | `create` `get` | [Contact imports](https://docs.migma.ai/api-reference/contacts/get-contact) |
 | `migma.tags` | `create` `list` `get` `update` `remove` | [Tags](https://docs.migma.ai/api-reference/tags/list-tags) |
 | `migma.segments` | `create` `list` `get` `update` `remove` | [Segments](https://docs.migma.ai/api-reference/audiences/list-audiences) |
 | `migma.topics` | `create` `list` `get` `update` `remove` `subscribe` `unsubscribe` | [Topics](https://docs.migma.ai/api-reference/topics/list-topics) |
 | `migma.sending` | `send` `getBatchStatus` | [Sending](https://docs.migma.ai/api-reference/sending/send-email) |
+| `migma.metrics` | `sending` | [API Reference](https://docs.migma.ai/api-reference/introduction) |
 | `migma.projects` | `list` `get` `import` `getImportStatus` `retryImport` `fieldCatalog` `importAndWait` | [Projects](https://docs.migma.ai/api-reference/projects/list-projects) |
 | `migma.emails` | `generate` `getGenerationStatus` `generateAndWait` `sendTest` `get` `edit` | [Email Generation](https://docs.migma.ai/api-reference/email/generate-email-async) |
 | `migma.campaigns` | `list` `create` `get` `send` `schedule` `cancel` `stats` `logs` `archive` `unarchive` | [Campaigns](https://docs.migma.ai/campaigns/overview) |
