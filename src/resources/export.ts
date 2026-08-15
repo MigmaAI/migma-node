@@ -24,12 +24,12 @@ export class Export {
     return this.client.get<ExportResult>(`/export/html/${conversationId}`);
   }
 
-  async mjml(conversationId: string): Promise<MigmaResult<ExportResult>> {
-    return this.client.get<ExportResult>(`/export/mjml/${conversationId}`);
-  }
-
   async pdf(conversationId: string): Promise<MigmaResult<ExportResult>> {
     return this.client.get<ExportResult>(`/export/pdf/${conversationId}`);
+  }
+
+  async png(conversationId: string): Promise<MigmaResult<ExportResult>> {
+    return this.client.get<ExportResult>(`/export/png/${conversationId}`);
   }
 
   async klaviyo(

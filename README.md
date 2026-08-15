@@ -517,11 +517,11 @@ const { data: devices } = await migma.previews.getSupportedDevices();
 
 ### Export
 
-Export generated emails to HTML, MJML, PDF, or directly to ESP platforms.
+Export generated emails to HTML, PNG, PDF, or directly to ESP platforms.
 
 ```typescript
 const { data: html } = await migma.export.html('conversation_id');
-const { data: mjml } = await migma.export.mjml('conversation_id');
+const { data: png } = await migma.export.png('conversation_id');
 const { data: pdf } = await migma.export.pdf('conversation_id');
 const { data: klaviyo } = await migma.export.klaviyo('conversation_id', 'hybrid');
 const { data: mailchimp } = await migma.export.mailchimp('conversation_id');
@@ -650,7 +650,7 @@ await migma.images.updateLogos('proj_abc123', {
 | `migma.campaigns` | `list` `create` `get` `send` `schedule` `cancel` `stats` `logs` `archive` `unarchive` | [Campaigns](https://docs.migma.ai/campaigns/overview) |
 | `migma.validation` | `all` `compatibility` `links` `spelling` `deliverability` | [Validation](https://docs.migma.ai/api-reference/email-validation/run-all-validation-checks) |
 | `migma.previews` | `create` `get` `getStatus` `getDevice` `getSupportedDevices` `createAndWait` | [Previews](https://docs.migma.ai/api-reference/email-previews/create-email-preview) |
-| `migma.export` | `getFormats` `getStatus` `html` `mjml` `pdf` `klaviyo` `mailchimp` `hubspot` | [Export](https://docs.migma.ai/api-reference/export/list-export-formats) |
+| `migma.export` | `getFormats` `getStatus` `html` `pdf` `png` `klaviyo` `mailchimp` `hubspot` | [Export](https://docs.migma.ai/api-reference/export/list-export-formats) |
 | `migma.domains` | `create` `list` `get` `verify` `update` `remove` `checkAvailability` `listManaged` `createManaged` `removeManaged` `provisionStream` `setup` | [Domains](https://docs.migma.ai/api-reference/domains/list-domains) |
 | `migma.webhooks` | `create` `list` `get` `update` `remove` `test` `getDeliveries` `getEvents` `getStats` | [Webhooks](https://docs.migma.ai/webhooks) |
 | `migma.knowledgeBase` | `list` `add` `update` `remove` | [API Ref](https://docs.migma.ai/api-reference/introduction) |
