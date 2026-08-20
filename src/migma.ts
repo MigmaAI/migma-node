@@ -10,6 +10,8 @@ import { Validation } from './resources/validation';
 import { Previews } from './resources/previews';
 import { Export } from './resources/export';
 import { Domains } from './resources/domains';
+import { DomainPurchases } from './resources/domain-purchases';
+import { Billing } from './resources/billing';
 import { Webhooks } from './resources/webhooks';
 import { KnowledgeBase } from './resources/knowledge-base';
 import { Images } from './resources/images';
@@ -39,6 +41,8 @@ export class Migma {
   readonly previews: Previews;
   readonly export: Export;
   readonly domains: Domains;
+  readonly domainPurchases: DomainPurchases;
+  readonly billing: Billing;
   readonly webhooks: Webhooks;
   readonly knowledgeBase: KnowledgeBase;
   readonly images: Images;
@@ -69,6 +73,8 @@ export class Migma {
     this.previews = new Previews(this.client);
     this.export = new Export(this.client);
     this.domains = new Domains(this.client);
+    this.domainPurchases = new DomainPurchases(this.client);
+    this.billing = new Billing(this.client);
     this.webhooks = new Webhooks(this.client);
     this.knowledgeBase = new KnowledgeBase(this.client);
     this.images = new Images(this.client);

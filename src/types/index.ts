@@ -10,6 +10,8 @@ export * from './validation';
 export * from './previews';
 export * from './export';
 export * from './domains';
+export * from './domain-purchases';
+export * from './billing';
 export * from './webhooks';
 export * from './knowledge-base';
 export * from './images';
