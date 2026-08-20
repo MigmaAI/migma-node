@@ -48,3 +48,33 @@ export interface DomainRegistration {
   currency?: string;
   [key: string]: unknown;
 }
+
+export type CustomDnsRecordType = 'A' | 'AAAA' | 'CNAME' | 'MX' | 'TXT' | 'NS';
+
+export interface CustomDnsRecord {
+  id: string;
+  type: CustomDnsRecordType;
+  name: string;
+  content: string;
+  /** MX only. */
+  priority?: number;
+  createdAt: string;
+  [key: string]: unknown;
+}
+
+export interface CustomDnsRecordList {
+  /** false = Migma does not host this domain's DNS zone (connected from an outside registrar). */
+  managed: boolean;
+  records: CustomDnsRecord[];
+}
+
+export interface AddCustomDnsRecordParams {
+  /** Record name: '@' for the root, a label like 'mail', or a full name like 'mail.acme.com'. */
+  name: string;
+  /** Record value, e.g. an IP, hostname, or TXT string. */
+  content: string;
+  /** Defaults to TXT. */
+  type?: CustomDnsRecordType;
+  /** MX priority (0-65535). */
+  priority?: number;
+}

@@ -1,6 +1,9 @@
 import type { MigmaClient } from '../client';
 import type { MigmaResult } from '../types/common';
 import type {
+  AddCustomDnsRecordParams,
+  CustomDnsRecord,
+  CustomDnsRecordList,
   DomainPurchaseCheckout,
   DomainPurchaseParams,
   DomainPurchaseQuote,
@@ -31,5 +34,33 @@ export class DomainPurchases {
   /** Purchase history and status: payment_pending → registering → active. */
   async registrations(): Promise<MigmaResult<{ registrations: DomainRegistration[] }>> {
     return this.client.get<{ registrations: DomainRegistration[] }>('/domains/purchase/registrations');
+  }
+
+  // DNS records live on Migma-hosted zones, which exist exactly for domains
+  // bought in Migma — hence they sit on this resource even though the API
+  // path is /domains/:domain/dns-records.
+
+  /** DNS records you added to a domain bought in Migma. `managed: false` = zone not hosted by Migma. */
+  async listDnsRecords(domain: string): Promise<MigmaResult<CustomDnsRecordList>> {
+    return this.client.get<CustomDnsRecordList>(`/domains/${encodeURIComponent(domain)}/dns-records`);
+  }
+
+  /**
+   * Add a DNS record (A, AAAA, CNAME, MX, TXT, or NS) to a domain bought in
+   * Migma. Migma's email sending records are protected and cannot be
+   * overridden; the root and www stay with domain forwarding.
+   */
+  async addDnsRecord(domain: string, params: AddCustomDnsRecordParams): Promise<MigmaResult<{ record: CustomDnsRecord }>> {
+    return this.client.post<{ record: CustomDnsRecord }>(
+      `/domains/${encodeURIComponent(domain)}/dns-records`,
+      params as unknown as Record<string, unknown>,
+    );
+  }
+
+  /** Remove a DNS record you added earlier (never Migma's own records). */
+  async removeDnsRecord(domain: string, recordId: string): Promise<MigmaResult<{ ok: boolean }>> {
+    return this.client.delete<{ ok: boolean }>(
+      `/domains/${encodeURIComponent(domain)}/dns-records/${encodeURIComponent(recordId)}`,
+    );
   }
 }
