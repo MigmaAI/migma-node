@@ -32,8 +32,10 @@ export class DomainPurchases {
   }
 
   /** Purchase history and status: payment_pending → registering → active. */
-  async registrations(): Promise<MigmaResult<{ registrations: DomainRegistration[] }>> {
-    return this.client.get<{ registrations: DomainRegistration[] }>('/domains/purchase/registrations');
+  async registrations(params?: { limit?: number }): Promise<MigmaResult<{ registrations: DomainRegistration[] }>> {
+    return this.client.get<{ registrations: DomainRegistration[] }>('/domains/purchase/registrations', {
+      limit: params?.limit,
+    });
   }
 
   // DNS records live on Migma-hosted zones, which exist exactly for domains
