@@ -646,7 +646,7 @@ await migma.images.updateLogos('proj_abc123', {
 | `migma.sending` | `send` `getBatchStatus` | [Sending](https://docs.migma.ai/api-reference/sending/send-email) |
 | `migma.metrics` | `sending` | [API Reference](https://docs.migma.ai/api-reference/introduction) |
 | `migma.projects` | `list` `get` `import` `getImportStatus` `retryImport` `fieldCatalog` `importAndWait` | [Projects](https://docs.migma.ai/api-reference/projects/list-projects) |
-| `migma.emails` | `generate` `getGenerationStatus` `generateAndWait` `sendTest` `get` `edit` | [Email Generation](https://docs.migma.ai/api-reference/email/generate-email-async) |
+| `migma.emails` | `generate` `importHtml` `getGenerationStatus` `generateAndWait` `importHtmlAndWait` `sendTest` `get` `edit` | [Email Generation](https://docs.migma.ai/api-reference/email/generate-email-async) |
 | `migma.campaigns` | `list` `create` `get` `send` `schedule` `cancel` `stats` `logs` `archive` `unarchive` | [Campaigns](https://docs.migma.ai/campaigns/overview) |
 | `migma.validation` | `all` `compatibility` `links` `spelling` `deliverability` | [Validation](https://docs.migma.ai/api-reference/email-validation/run-all-validation-checks) |
 | `migma.previews` | `create` `get` `getStatus` `getDevice` `getSupportedDevices` `createAndWait` | [Previews](https://docs.migma.ai/api-reference/email-previews/create-email-preview) |
@@ -670,6 +670,7 @@ const options = {
 };
 
 await migma.emails.generateAndWait(params, options);
+await migma.emails.importHtmlAndWait(params, options);
 await migma.projects.importAndWait(params, options);
 await migma.previews.createAndWait(params, options);
 ```
