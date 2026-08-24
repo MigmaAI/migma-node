@@ -3,6 +3,7 @@ import type { MigmaResult } from '../types/common';
 import type {
   GenerateEmailParams,
   GenerateEmailResponse,
+  ImportHtmlEmailParams,
   EmailGenerationStatus,
   Email,
   EditEmailParams,
@@ -45,6 +46,18 @@ export class Emails {
     );
   }
 
+  /** Convert existing HTML or .eml into editable emails (async). */
+  async importHtml(
+    params: ImportHtmlEmailParams,
+    options?: CallOptions
+  ): Promise<MigmaResult<GenerateEmailResponse>> {
+    return this.client.post<GenerateEmailResponse>(
+      '/projects/emails/import-html',
+      params as unknown as Record<string, unknown>,
+      options
+    );
+  }
+
   /** Check email generation status */
   async getGenerationStatus(
     conversationId: string
@@ -80,6 +93,29 @@ export class Emails {
     callOptions?: CallOptions
   ): Promise<MigmaResult<EmailGenerationStatus>> {
     const startResult = await this.generate(params, callOptions);
+    if (startResult.error) {
+      return { data: null, error: startResult.error };
+    }
+
+    const conversationId = startResult.data.conversationId;
+
+    return poll(
+      () => this.getGenerationStatus(conversationId),
+      (status) => status.status === 'completed' || status.status === 'failed',
+      options
+    );
+  }
+
+  /**
+   * Import HTML and wait for completion.
+   * Polls getGenerationStatus until status is 'completed' or 'failed'.
+   */
+  async importHtmlAndWait(
+    params: ImportHtmlEmailParams,
+    options?: PollingOptions,
+    callOptions?: CallOptions
+  ): Promise<MigmaResult<EmailGenerationStatus>> {
+    const startResult = await this.importHtml(params, callOptions);
     if (startResult.error) {
       return { data: null, error: startResult.error };
     }
