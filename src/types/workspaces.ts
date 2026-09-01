@@ -6,6 +6,8 @@ export interface Workspace {
   role: string;
   /** True for the caller's personal workspace. */
   personal: boolean;
+  /** Brands in this workspace the caller can access — id + name only. */
+  projects: Array<{ id: string; name: string }>;
 }
 
 export interface ListWorkspacesResponse {
