@@ -17,6 +17,7 @@ import { KnowledgeBase } from './resources/knowledge-base';
 import { Images } from './resources/images';
 import { Campaigns } from './resources/campaigns';
 import { Metrics } from './resources/metrics';
+import { Workspaces } from './resources/workspaces';
 
 export interface MigmaConfig {
   /** API base URL. Default: 'https://api.migma.ai/v1' */
@@ -48,6 +49,7 @@ export class Migma {
   readonly images: Images;
   readonly campaigns: Campaigns;
   readonly metrics: Metrics;
+  readonly workspaces: Workspaces;
 
   constructor(apiKey: string, config?: MigmaConfig) {
     if (!apiKey) {
@@ -80,5 +82,6 @@ export class Migma {
     this.images = new Images(this.client);
     this.campaigns = new Campaigns(this.client);
     this.metrics = new Metrics(this.client);
+    this.workspaces = new Workspaces(this.client);
   }
 }

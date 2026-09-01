@@ -21,6 +21,7 @@ export class Projects {
       limit: params?.limit,
       offset: params?.offset,
       status: params?.status,
+      organizationId: params?.organizationId,
     });
   }
 

@@ -19,6 +19,8 @@ export interface ListProjectsParams {
   limit?: number;
   offset?: number;
   status?: string;
+  /** Scope the list to one workspace (see workspaces.list()). */
+  organizationId?: string;
 }
 
 export interface ListProjectsResponse {
