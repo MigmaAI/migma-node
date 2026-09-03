@@ -42,6 +42,10 @@ export interface DomainVerificationResult {
 
 export interface DomainAvailability {
   available: boolean;
+  prefix: string;
+  fullDomain: string;
+  /** Present only when unavailable: taken, reserved, or the format rule it breaks. */
+  reason?: string;
   [key: string]: unknown;
 }
 
