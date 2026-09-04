@@ -14,6 +14,7 @@ import type {
   EmailMetrics,
   EmailLogsParams,
   EmailLogsResponse,
+  EmailFavorite,
 } from '../types/emails';
 import { poll, type PollingOptions } from '../polling';
 
@@ -145,6 +146,11 @@ export class Emails {
    * series. Events arrive asynchronously; opens are directional while clicks
    * and delivery events are stronger signals.
    */
+  /** Star or unstar one generated email as a design reference. Idempotent. */
+  async setFavorite(emailId: string, favorite: boolean): Promise<MigmaResult<EmailFavorite>> {
+    return this.client.put<EmailFavorite>(`/emails/${emailId}/favorite`, { favorite });
+  }
+
   async metrics(emailId: string): Promise<MigmaResult<EmailMetrics>> {
     return this.client.get<EmailMetrics>(`/emails/${emailId}/metrics`);
   }
