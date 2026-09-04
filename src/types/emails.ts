@@ -244,3 +244,10 @@ export interface EmailLogsResponse {
   nextCursor: string | null;
   hasMore: boolean;
 }
+
+export interface EmailFavorite {
+  emailId: string;
+  favorite: boolean;
+  conversationId: string;
+  slotUuid: string | null;
+}
