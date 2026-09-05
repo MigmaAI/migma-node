@@ -74,6 +74,13 @@ export interface ScheduleCampaignParams {
  * may be slightly stale. `botOpens`, `botClicks`, and `mppOpens` are present
  * when Apple Mail Privacy Protection / bot detection data is available.
  */
+export interface CampaignReportingStatus {
+  status: 'live' | 'cached' | 'unavailable';
+  source: 'tracking-worker' | 'campaign-cache' | 'unavailable';
+  updatedAt?: string;
+  reason?: string;
+}
+
 export interface CampaignStats {
   totalSent: number;
   totalDelivered: number;
@@ -89,6 +96,8 @@ export interface CampaignStats {
   clickRate: number;
   /** ISO 8601 timestamp of when these stats were last refreshed. */
   lastUpdated: string;
+  reporting?: CampaignReportingStatus;
+  conversion?: { conversions: number; revenue?: number; currency: string | null; source: 'connector' | 'api' | 'mixed' };
   botOpens?: number;
   botClicks?: number;
   mppOpens?: number;

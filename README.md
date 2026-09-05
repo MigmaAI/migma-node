@@ -752,3 +752,10 @@ console.log('Download:', data.files[0].url);
 ## License
 
 MIT
+
+
+## Automations
+
+`migma.automations` creates an off draft from a plain-language brief or workflow screenshots, checks its setup, and manages its status and contact journeys. Generation is asynchronous; keep the returned `jobId` and poll `generationStatus`. Creation does not activate delivery. `activate(id, { confirmed: true })` is only for an explicit user activation request after review.
+
+Use `generate`, `generationStatus`, `list`, `get`, `capabilities`, `validate`, `activate`, `pause`, `updateTrigger`, `updateWait`, `runs`, `getRun`, and `metrics`. Automation metrics are a view over the same campaign reports; preserve reporting status and do not count both copies of the same campaign. See [automation tools and API](https://docs.migma.ai/automations/chat-and-api).
