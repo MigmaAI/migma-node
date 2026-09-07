@@ -3,6 +3,7 @@ import type { MigmaResult } from '../types/common';
 import type {
   GenerateEmailParams,
   GenerateEmailResponse,
+  ImportHtmlEmailParams,
   EmailGenerationStatus,
   Email,
   EditEmailParams,
@@ -13,6 +14,7 @@ import type {
   EmailMetrics,
   EmailLogsParams,
   EmailLogsResponse,
+  EmailFavorite,
 } from '../types/emails';
 import { poll, type PollingOptions } from '../polling';
 
@@ -40,6 +42,18 @@ export class Emails {
   ): Promise<MigmaResult<GenerateEmailResponse>> {
     return this.client.post<GenerateEmailResponse>(
       '/projects/emails/generate',
+      params as unknown as Record<string, unknown>,
+      options
+    );
+  }
+
+  /** Convert existing HTML or .eml into editable emails (async). */
+  async importHtml(
+    params: ImportHtmlEmailParams,
+    options?: CallOptions
+  ): Promise<MigmaResult<GenerateEmailResponse>> {
+    return this.client.post<GenerateEmailResponse>(
+      '/projects/emails/import-html',
       params as unknown as Record<string, unknown>,
       options
     );
@@ -93,6 +107,29 @@ export class Emails {
     );
   }
 
+  /**
+   * Import HTML and wait for completion.
+   * Polls getGenerationStatus until status is 'completed' or 'failed'.
+   */
+  async importHtmlAndWait(
+    params: ImportHtmlEmailParams,
+    options?: PollingOptions,
+    callOptions?: CallOptions
+  ): Promise<MigmaResult<EmailGenerationStatus>> {
+    const startResult = await this.importHtml(params, callOptions);
+    if (startResult.error) {
+      return { data: null, error: startResult.error };
+    }
+
+    const conversationId = startResult.data.conversationId;
+
+    return poll(
+      () => this.getGenerationStatus(conversationId),
+      (status) => status.status === 'completed' || status.status === 'failed',
+      options
+    );
+  }
+
   /** Send a test email from a completed conversation */
   async sendTest(
     params: SendTestEmailParams
@@ -109,6 +146,11 @@ export class Emails {
    * series. Events arrive asynchronously; opens are directional while clicks
    * and delivery events are stronger signals.
    */
+  /** Star or unstar one generated email as a design reference. Idempotent. */
+  async setFavorite(emailId: string, favorite: boolean): Promise<MigmaResult<EmailFavorite>> {
+    return this.client.put<EmailFavorite>(`/emails/${emailId}/favorite`, { favorite });
+  }
+
   async metrics(emailId: string): Promise<MigmaResult<EmailMetrics>> {
     return this.client.get<EmailMetrics>(`/emails/${emailId}/metrics`);
   }

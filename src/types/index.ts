@@ -18,3 +18,4 @@ export * from './images';
 export * from './campaigns';
 export * from './metrics';
 export * from './automations';
+export * from './workspaces';

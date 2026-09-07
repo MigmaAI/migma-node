@@ -10,6 +10,9 @@ import type {
   RetryImportResponse,
   FieldCatalogParams,
   FieldCatalogResponse,
+  BrandGuidelinesParams,
+  BrandGuidelinesResponse,
+  ProjectReferencesResponse,
 } from '../types/projects';
 import { poll, type PollingOptions } from '../polling';
 
@@ -21,6 +24,7 @@ export class Projects {
       limit: params?.limit,
       offset: params?.offset,
       status: params?.status,
+      organizationId: params?.organizationId,
     });
   }
 
@@ -39,6 +43,22 @@ export class Projects {
     return this.client.get<ImportStatusResponse>(
       `/projects/import/${projectId}/status`
     );
+  }
+
+  /** Replace the brand's standing design rules and/or image style notes. */
+  async updateBrandGuidelines(
+    projectId: string,
+    params: BrandGuidelinesParams,
+  ): Promise<MigmaResult<BrandGuidelinesResponse>> {
+    return this.client.put<BrandGuidelinesResponse>(
+      `/projects/${projectId}/brand-guidelines`,
+      params as unknown as Record<string, unknown>,
+    );
+  }
+
+  /** Design references generation reads: favorites, saved designs, saved sections. */
+  async references(projectId: string): Promise<MigmaResult<ProjectReferencesResponse>> {
+    return this.client.get<ProjectReferencesResponse>(`/projects/${projectId}/references`);
   }
 
   async retryImport(projectId: string): Promise<MigmaResult<RetryImportResponse>> {

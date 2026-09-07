@@ -72,6 +72,39 @@ describe('client.emails public generation and email APIs', () => {
     });
   });
 
+  it('importHtml posts html to POST /projects/emails/import-html', async () => {
+    const { client, fetchMock } = newClient();
+    fetchMock.mockResolvedValueOnce(
+      ok({
+        conversationId: 'conv_2',
+        status: 'pending',
+        message: 'started',
+        link: 'https://migma.ai/chat?c=conv_2',
+        count: 1,
+      }),
+    );
+
+    const res = await client.emails.importHtml({
+      projectId: 'proj_1',
+      html: '<html><body>Hi</body></html>',
+      name: 'welcome.html',
+      instruction: 'Keep this as-is',
+    });
+
+    expect(res.error).toBeNull();
+    expect(res.data?.conversationId).toBe('conv_2');
+
+    const { url, init } = lastCall(fetchMock);
+    expect(init.method).toBe('POST');
+    expect(url).toBe('https://api.test.local/v1/projects/emails/import-html');
+    expect(JSON.parse(init.body as string)).toEqual({
+      projectId: 'proj_1',
+      html: '<html><body>Hi</body></html>',
+      name: 'welcome.html',
+      instruction: 'Keep this as-is',
+    });
+  });
+
   it('getGenerationStatus surfaces result.emails email data', async () => {
     const { client, fetchMock } = newClient();
     fetchMock.mockResolvedValueOnce(

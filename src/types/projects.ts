@@ -19,6 +19,8 @@ export interface ListProjectsParams {
   limit?: number;
   offset?: number;
   status?: string;
+  /** Scope the list to one workspace (see workspaces.list()). */
+  organizationId?: string;
 }
 
 export interface ListProjectsResponse {
@@ -88,4 +90,41 @@ export interface FieldCatalogResponse {
   entries: FieldCatalogEntry[];
   totalSubscribers: number;
   computedAt: string;
+}
+
+export interface BrandImageStyle {
+  styleNotes?: string;
+  avoid?: string;
+  useBrandColors?: boolean;
+}
+
+/** Body for PUT /projects/:id/brand-guidelines. At least one field is required. */
+export interface BrandGuidelinesParams {
+  /** Replaces the standing instructions every future email is written under. */
+  instructions?: string;
+  imageStyle?: BrandImageStyle;
+}
+
+export interface BrandGuidelinesResponse {
+  instructions: string;
+  imageStyle: BrandImageStyle;
+  previous: { instructions: string };
+  changed: boolean;
+}
+
+export interface DesignReferenceItem {
+  id: string;
+  title: string;
+  content?: string;
+  date?: string;
+  previewHtml?: string;
+  thumbnailUrl?: string;
+  screenshotUrl?: string;
+  referenceOrigin?: string;
+  [key: string]: unknown;
+}
+
+export interface ProjectReferencesResponse {
+  references: DesignReferenceItem[];
+  total: number;
 }

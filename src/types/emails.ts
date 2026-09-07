@@ -15,6 +15,26 @@ export interface GenerateEmailParams {
   count?: number;
 }
 
+export interface ImportHtmlEmailFile {
+  name: string;
+  source: string;
+}
+
+export interface ImportHtmlEmailParams {
+  projectId: string;
+  /** Single HTML or .eml source. Provide this or `htmls`, not both. */
+  html?: string;
+  /** Filename for a single `html` paste. */
+  name?: string;
+  /** Multiple HTML / .eml files (1–12). Provide this or `html`, not both. */
+  htmls?: ImportHtmlEmailFile[];
+  /** Natural-language conversion instruction (keep as-is vs apply brand). */
+  instruction?: string;
+  languages?: string[];
+  visibility?: 'private' | 'unlisted' | 'public';
+  generateMedia?: boolean;
+}
+
 export interface GenerateEmailResponse {
   conversationId: string;
   status: 'pending';
@@ -223,4 +243,11 @@ export interface EmailLogsResponse {
   emails: EmailSendLog[];
   nextCursor: string | null;
   hasMore: boolean;
+}
+
+export interface EmailFavorite {
+  emailId: string;
+  favorite: boolean;
+  conversationId: string;
+  slotUuid: string | null;
 }
