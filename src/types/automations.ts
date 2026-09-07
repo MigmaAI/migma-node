@@ -103,5 +103,5 @@ export interface AutomationMetrics {
     reporting?: CampaignReportingStatus;
   }>;
   edges: Array<{ edgeId: string; conversions: number; revenueCents?: number; currency?: string | null }>;
-  reporting: { status: 'live' | 'cached' | 'partial' | 'unavailable'; source: 'campaigns'; warnings: string[] };
+  reporting: { status: 'live' | 'cached' | 'partial' | 'unavailable' | 'not_applicable'; source: 'campaigns'; warnings: string[] };
 }
