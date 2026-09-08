@@ -5,6 +5,19 @@ const ok = (data: unknown) => new Response(JSON.stringify({ success: true, data 
 afterEach(() => vi.unstubAllGlobals());
 
 describe('automation API transport', () => {
+  it('retains source entry rules and cutover status from saved flows', async () => {
+    const flow = { id: 'flow', projectId: 'brand', name: 'Checkout', status: 'draft', version: 1,
+      link: 'https://example.test/flow', reentry: 'perEvent', reentryCooldown: { amount: 10, unit: 'day' }, allowConcurrentReentry: true,
+      cancelOn: [{ event: 'ecommerce.order_placed', origin: 'shopify', since: 'trigger', mode: 'exit' }],
+      migration: { provider: 'klaviyo', snapshotId: 'snapshot', sourceHash: 'a'.repeat(64), mappingHash: 'b'.repeat(64), status: 'awaiting_cutover', preparedAt: '2026-09-08T12:00:00Z', preparedBy: 'actor' } };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(flow)));
+    const client = new Migma('test-key', { maxRetries: 0 });
+    const result = await client.automations.get('flow');
+    expect(result.data).toEqual(flow);
+    expect(result.data?.reentryCooldown?.amount).toBe(10);
+    expect(result.data?.cancelOn?.[0].since).toBe('trigger');
+    expect(result.data?.migration?.status).toBe('awaiting_cutover');
+  });
   it('keeps reporting gaps distinguishable from measured zero', async () => {
     const report = { nodes: [{ nodeId: 'step', campaignId: 'campaign', reporting: { status: 'unavailable', source: 'unavailable' } }], edges: [], reporting: { status: 'unavailable', source: 'campaigns', warnings: ['Tracking unavailable'] } };
     const fetch = vi.fn().mockResolvedValue(ok(report));

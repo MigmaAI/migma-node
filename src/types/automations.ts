@@ -7,6 +7,21 @@ export interface AutomationCheck {
   fix?: string;
 }
 
+export type AutomationReentry = 'once' | 'perEvent' | 'lifetimeOnce';
+export interface AutomationReentryCooldown {
+  /** Positive integer; the complete interval cannot exceed 365 days. */
+  amount: number;
+  unit: 'minute' | 'hour' | 'day';
+}
+export interface AutomationCancelRule {
+  event: string;
+  origin?: string;
+  /** Defaults to enrollment. Trigger uses the source event's immutable timestamp. */
+  since?: 'enrollment' | 'trigger';
+  mode: 'exit' | 'restart';
+  propertyFilters?: AutomationEventTrigger['event']['propertyFilters'];
+}
+
 export interface Automation {
   id: string;
   projectId: string;
@@ -18,6 +33,15 @@ export interface Automation {
   conversationId?: string;
   trigger?: Record<string, unknown>;
   steps?: Array<Record<string, unknown>>;
+  reentry?: AutomationReentry;
+  reentryCooldown?: AutomationReentryCooldown | null;
+  /** Requires perEvent, a cooldown, and verified concurrent-entry availability. */
+  allowConcurrentReentry?: boolean;
+  cancelOn?: AutomationCancelRule[];
+  migration?: {
+    provider: 'klaviyo'; snapshotId: string; sourceHash: string; mappingHash: string;
+    status: 'awaiting_cutover'; preparedAt: string; preparedBy: string;
+  };
 }
 
 export interface AutomationCapabilities {
