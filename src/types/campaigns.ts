@@ -45,7 +45,7 @@ export interface CreateCampaignParams {
   recipientType: 'audience' | 'tag';
   recipientId: string;
   topicId?: string;
-  providerType?: 'ses' | 'migma';
+  providerType?: 'ses' | 'resend' | 'sendgrid' | 'mailgun' | 'migma';
   variables?: Record<string, unknown>;
 }
 
