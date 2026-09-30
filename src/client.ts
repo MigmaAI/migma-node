@@ -16,10 +16,13 @@ interface RequestOptions {
   body?: Record<string, unknown>;
   query?: Record<string, string | number | boolean | undefined>;
   headers?: Record<string, string>;
+  maxRetries?: number;
 }
 
 /** Per-call options for write methods (POST/PATCH/DELETE). */
 export interface CallOptions {
+  /** Override automatic retries for this call. Use 0 for unsafe writes. */
+  maxRetries?: number;
   /**
    * Optional Idempotency-Key (max 100 chars). Same key + same body within 24h
    * replays the original response; a different body returns 409 IDEMPOTENCY_CONFLICT.
@@ -50,7 +53,7 @@ export class MigmaClient {
 
   async request<T>(options: RequestOptions): Promise<MigmaResult<T>> {
     const url = this.buildUrl(options.path, options.query);
-    const attempts = this.config.maxRetries + 1;
+    const attempts = (options.maxRetries ?? this.config.maxRetries) + 1;
 
     let lastError: MigmaError | null = null;
 
@@ -163,11 +166,11 @@ export class MigmaClient {
   }
 
   async post<T>(path: string, body?: Record<string, unknown>, options?: CallOptions) {
-    return this.request<T>({ method: 'POST', path, body, headers: this.callHeaders(options) });
+    return this.request<T>({ method: 'POST', path, body, headers: this.callHeaders(options), maxRetries: options?.maxRetries });
   }
 
   async patch<T>(path: string, body?: Record<string, unknown>, options?: CallOptions) {
-    return this.request<T>({ method: 'PATCH', path, body, headers: this.callHeaders(options) });
+    return this.request<T>({ method: 'PATCH', path, body, headers: this.callHeaders(options), maxRetries: options?.maxRetries });
   }
 
   async put<T>(path: string, body?: Record<string, unknown>) {
@@ -179,7 +182,7 @@ export class MigmaClient {
     query?: Record<string, string | number | boolean | undefined>,
     options?: CallOptions
   ) {
-    return this.request<T>({ method: 'DELETE', path, query, headers: this.callHeaders(options) });
+    return this.request<T>({ method: 'DELETE', path, query, headers: this.callHeaders(options), maxRetries: options?.maxRetries });
   }
 
   private callHeaders(options?: CallOptions): Record<string, string> | undefined {

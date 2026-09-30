@@ -10,6 +10,13 @@ export interface KnowledgeBaseEntry {
   thumbnailUrl?: string;
   screenshotUrl?: string;
   referenceOrigin?: ReferenceOrigin;
+  sourceFileName?: string;
+  /** Preparation runs after save; poll list() for completion. Retry failures by updating the original content. */
+  conversion?: {
+    status: 'pending' | 'complete' | 'failed';
+    revision: string;
+    error?: string;
+  };
 }
 
 export interface KnowledgeBaseListResponse {
@@ -20,6 +27,8 @@ export interface KnowledgeBaseListResponse {
 export interface AddKnowledgeBaseParams {
   title: string;
   content: string;
+  /** Original upload name, including .html, .eml, or .mjml; at most 255 characters. */
+  sourceFileName?: string;
   /** Set to mark the entry as a design reference generation should match. */
   referenceOrigin?: ReferenceOrigin;
   previewHtml?: string;
@@ -30,4 +39,6 @@ export interface AddKnowledgeBaseParams {
 export interface UpdateKnowledgeBaseParams {
   title?: string;
   content?: string;
+  /** Empty string clears the previous upload name. */
+  sourceFileName?: string;
 }
