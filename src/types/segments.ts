@@ -1,9 +1,10 @@
 export interface SegmentFieldFilter {
   key: string;
-  /** Exact match (is/is_not) or pattern match (starts_with/ends_with/contains/not_contains,
-   *  compiled to anchored case-insensitive regex). Pattern modes keep a value group
-   *  like "email ends_with .vc" accurate as new contacts arrive. */
-  mode?: 'is' | 'is_not' | 'starts_with' | 'ends_with' | 'contains' | 'not_contains';
+  /** Exact/pattern, date, or numeric comparison. Date/number comparisons use one
+   * value; date_between/number_between use two ordered bounds. */
+  mode?: 'is' | 'is_not' | 'starts_with' | 'ends_with' | 'contains' | 'not_contains'
+    | 'date_after' | 'date_before' | 'date_on' | 'date_between'
+    | 'number_gt' | 'number_gte' | 'number_lt' | 'number_lte' | 'number_between';
   values: string[];
 }
 
@@ -19,6 +20,12 @@ export interface SegmentActivityFilter {
 }
 
 export interface SegmentFilters {
+  /** Combines this group's conditions and child groups. Defaults to all (AND).
+   * Campaign-scoped activity requires all in its group and every ancestor. */
+  match?: 'all' | 'any';
+  /** Nonempty child groups: at most 10 per group, 3 levels below the root,
+   * and 50 conditions across the entire filter tree. The root may be empty. */
+  groups?: SegmentFilters[];
   tags?: string[];
   excludeTags?: string[];
   status?: 'subscribed' | 'unsubscribed' | 'non-subscribed' | 'bounced';
