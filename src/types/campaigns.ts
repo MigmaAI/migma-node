@@ -13,6 +13,8 @@ export interface Campaign {
   replyTo?: string | null;
   recipientType: 'audience' | 'tag';
   recipientId: string;
+  /** Present when the campaign targets more than one segment or list. */
+  recipientIds?: string[];
   topicId?: string | null;
   estimatedRecipients?: number | null;
   providerType: string;
@@ -44,6 +46,8 @@ export interface CreateCampaignParams {
   replyTo?: string;
   recipientType: 'audience' | 'tag';
   recipientId: string;
+  /** Full list of segment or list IDs of the same type. When set, this is the selection; recipientId is stored as the first id. Unique people receive one email. Max 20. */
+  recipientIds?: string[];
   topicId?: string;
   providerType?: 'ses' | 'resend' | 'sendgrid' | 'mailgun' | 'migma';
   variables?: Record<string, unknown>;
