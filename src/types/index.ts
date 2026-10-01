@@ -18,3 +18,4 @@ export * from './images';
 export * from './campaigns';
 export * from './metrics';
 export * from './workspaces';
+export * from './connected-tools';

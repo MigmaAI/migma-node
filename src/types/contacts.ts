@@ -1,3 +1,5 @@
+import type { SegmentFilters } from './segments';
+
 export type ContactStatus = 'subscribed' | 'unsubscribed' | 'bounced' | 'non-subscribed';
 
 export interface Contact {
@@ -120,4 +122,25 @@ export interface ChangeStatusParams {
   allLists?: boolean;
   tags?: string[];
   projectId: string;
+}
+
+export interface CreateContactExportParams {
+  projectId: string;
+  segmentId?: string;
+  /** Same filters used by saved segments; tags are IDs, not names. */
+  filters?: SegmentFilters & { search?: string };
+}
+
+export interface ContactExportStatus {
+  jobId: string;
+  projectId: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  contactCount: number;
+  fileName: string;
+  createdAt: string;
+  completedAt: string | null;
+  /** Present only after the private CSV has been uploaded. Expires after one hour. */
+  downloadUrl?: string;
+  downloadExpiresAt?: string;
+  error?: string;
 }

@@ -1,3 +1,4 @@
+import type { ConnectedToolScope, ConnectedToolSchema, ListConnectedToolsParams, ListConnectedToolsResponse } from '../types/connected-tools';
 import type { MigmaClient } from '../client';
 import type { MigmaResult } from '../types/common';
 import type {
@@ -78,6 +79,19 @@ export class Projects {
         tag: params?.tag,
       }
     );
+  }
+
+  async listConnectedTools(params: ListConnectedToolsParams): Promise<MigmaResult<ListConnectedToolsResponse>> {
+    return this.client.get<ListConnectedToolsResponse>('/connected-tools', { ...params });
+  }
+
+  async getConnectedTool(params: ConnectedToolScope): Promise<MigmaResult<ConnectedToolSchema>> {
+    return this.client.get<ConnectedToolSchema>('/connected-tools/schema', { ...params });
+  }
+
+  /** Never automatically replay external writes; provider outcome can be unknown. */
+  async callConnectedTool(params: ConnectedToolScope & { parameters: Record<string, unknown> }): Promise<MigmaResult<unknown>> {
+    return this.client.post<unknown>('/connected-tools/call', { ...params }, { maxRetries: 0 });
   }
 
   /**
