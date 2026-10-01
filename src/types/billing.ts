@@ -18,16 +18,20 @@ export type UpgradePlan =
 
 export interface UpgradeLinkParams {
   /**
-   * Target plan for Stripe Checkout. Omit to get a billing portal link
-   * (existing Stripe customers only).
+   * User-chosen plan for new subscription checkout. Omit for an existing
+   * Stripe customer's billing portal. Passing plan for an active subscription
+   * can change it and charge immediately; requires explicit charge approval.
    */
   plan?: UpgradePlan;
 }
 
 export interface UpgradeLink {
-  /** URL the account owner opens in a browser to pay or manage billing. */
+  /** Checkout, invoice, confirmation, or portal URL; not proof of payment. */
   url: string;
+  /** checkout includes an existing plan-change result; portal is the billing portal. */
   kind: 'checkout' | 'portal';
+  /** Present when a new Stripe Checkout session was created. */
   sessionId?: string;
+  /** Migma checkout order id or Stripe invoice id for an existing plan change. */
   orderId?: string;
 }
