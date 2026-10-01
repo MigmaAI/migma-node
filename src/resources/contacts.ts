@@ -12,6 +12,8 @@ import type {
   BatchDeleteContactsParams,
   BatchDeleteResponse,
   ChangeStatusParams,
+  CreateContactExportParams,
+  ContactExportStatus,
 } from '../types/contacts';
 
 export class Contacts {
@@ -56,6 +58,15 @@ export class Contacts {
   /** Batch delete contacts by email (up to 1000). Emails with no match come back in `notFound`. */
   async bulkDeleteByEmail(params: BatchDeleteContactsParams, options?: CallOptions): Promise<MigmaResult<BatchDeleteResponse>> {
     return this.client.post<BatchDeleteResponse>('/contacts/bulk-delete', params as unknown as Record<string, unknown>, options);
+  }
+
+  /** Queue a filtered CSV export. Poll getExport; do not list every contact to build a CSV. */
+  async createExport(params: CreateContactExportParams, options?: CallOptions): Promise<MigmaResult<ContactExportStatus>> {
+    return this.client.post<ContactExportStatus>('/contacts/exports', params as unknown as Record<string, unknown>, { ...options, maxRetries: options?.idempotencyKey ? options.maxRetries : 0 });
+  }
+
+  async getExport(jobId: string, projectId: string): Promise<MigmaResult<ContactExportStatus>> {
+    return this.client.get<ContactExportStatus>(`/contacts/exports/${encodeURIComponent(jobId)}`, { projectId });
   }
 
   async changeStatus(params: ChangeStatusParams, options?: CallOptions): Promise<MigmaResult<{ success: boolean }>> {
