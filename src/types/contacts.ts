@@ -144,3 +144,39 @@ export interface ContactExportStatus {
   downloadExpiresAt?: string;
   error?: string;
 }
+
+export type ContactImportProvider = 'klaviyo' | 'mailchimp' | 'hubspot';
+
+/** A list or segment in the connected provider account that can be imported. */
+export interface ProviderImportSource {
+  id: string;
+  type: 'audience' | 'segment' | 'tag' | 'list';
+  name: string;
+  [key: string]: unknown;
+}
+
+export interface ListProviderImportSourcesParams {
+  provider: ContactImportProvider;
+  projectId: string;
+  /** Only when the brand has several accounts connected for this provider. */
+  connectionId?: string;
+}
+
+export interface ImportFromProviderParams {
+  provider: ContactImportProvider;
+  projectId: string;
+  /** 1 to 25 sources from listProviderImportSources. */
+  sources: Pick<ProviderImportSource, 'id' | 'type' | 'name'>[];
+  /** Default subscribed-only. */
+  consentMode?: 'subscribed-only' | 'include-all';
+  connectionId?: string;
+}
+
+/** Each import becomes a tag and a segment named after its sources. Poll the import with its id. */
+export interface ProviderImportStarted {
+  object: 'contact_import';
+  id: string;
+  status: 'pending';
+  tag: { id: string; name: string };
+  segment: { id: string; name: string };
+}

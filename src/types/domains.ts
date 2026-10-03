@@ -13,6 +13,8 @@ export interface Domain {
   status: string;
   isVerified?: boolean;
   dnsRecords?: DnsRecord[];
+  /** Set while a custom domain cannot send yet: a Migma page that starts one-click DNS setup. */
+  connectUrl?: string;
   trackingSettings?: {
     openTracking?: boolean;
     clickTracking?: boolean;
