@@ -49,7 +49,7 @@ export interface CreateCampaignParams {
   /** Full list of segment or list IDs of the same type. When set, this is the selection; recipientId is stored as the first id. Unique people receive one email. Max 20. */
   recipientIds?: string[];
   topicId?: string;
-  providerType?: 'ses' | 'resend' | 'sendgrid' | 'mailgun' | 'migma';
+  providerType?: 'ses' | 'migma';
   variables?: Record<string, unknown>;
 }
 

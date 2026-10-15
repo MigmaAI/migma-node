@@ -1,5 +1,5 @@
 export type RecipientType = 'email' | 'audience' | 'segment' | 'tag';
-export type ProviderType = 'ses' | 'resend' | 'sendgrid' | 'mailgun' | 'migma';
+export type ProviderType = 'ses' | 'migma';
 
 export interface SendEmailParams {
   recipientType: RecipientType;
