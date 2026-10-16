@@ -74,7 +74,8 @@ export interface ScheduleCampaignParams {
   /**
    * Send at the clock time of `scheduledAt` in `scheduledTimezone`, in each contact's own time zone (by country).
    * Requires `scheduledTimezone`. Contacts without a country get it at `scheduledAt`; where that time has passed,
-   * the same time the next day. Not available with A/B tests or batch sending.
+   * the same time the next day. Not available with A/B tests or batch sending. Omit to keep the campaign's current
+   * setting; `false` turns it off.
    */
   localTimeDelivery?: boolean;
 }
