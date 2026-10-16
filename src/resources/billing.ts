@@ -11,8 +11,10 @@ export class Billing {
   }
 
   /**
-   * Mint a Stripe link the account owner opens in a browser to upgrade or
-   * manage the subscription. Nothing is charged by this call itself.
+   * Create checkout for a user-chosen new plan, or omit plan for the existing
+   * customer's billing portal. Passing plan for an active subscription can
+   * change it and charge prorated payment immediately; obtain charge approval.
+   * The returned URL alone does not confirm payment. Do not retry unknown writes.
    */
   async upgradeLink(params: UpgradeLinkParams = {}): Promise<MigmaResult<UpgradeLink>> {
     return this.client.post<UpgradeLink>('/billing/upgrade-link', params as unknown as Record<string, unknown>);

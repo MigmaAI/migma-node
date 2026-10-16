@@ -156,6 +156,22 @@ export interface EditEmailParams {
   label?: string;
 }
 
+export interface EmailEditOperation {
+  editId: string;
+  emailId: string;
+  conversationId: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  stage: string;
+  createdAt: string;
+  updatedAt: string;
+  pollAfterMs: number;
+  error?: string;
+  /** Inspect the saved email before starting another edit after a failure. */
+  changesMayHaveBeenSaved?: boolean;
+  /** Current saved email, included by getEditStatus after completion. */
+  result?: Email;
+}
+
 export interface EmailMetricsSummary {
   totalEmails: number;
   delivered: number;

@@ -217,6 +217,41 @@ describe('client.emails public generation and email APIs', () => {
       prompt: 'Make it shorter',
     });
   });
+
+  it('never automatically repeats a synchronous edit after an ambiguous network failure', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error('socket closed'));
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new Migma('test', { maxRetries: 2, retryDelay: 0 });
+    const result = await client.emails.edit('email', { prompt: 'Add integrations' });
+    expect(result.error?.message).toBe('socket closed');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries an async submission using one generated idempotency key', async () => {
+    const fetchMock = vi.fn().mockRejectedValueOnce(new Error('lost acknowledgment'))
+      .mockResolvedValueOnce(ok({ editId: 'edit-1', emailId: 'email', conversationId: 'conversation', status: 'pending' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new Migma('test', { maxRetries: 2, retryDelay: 0 });
+    const result = await client.emails.startEdit('email', { prompt: 'Add integrations' });
+    expect(result.data?.editId).toBe('edit-1');
+    const [first, second] = fetchMock.mock.calls.map(call => call[1] as RequestInit);
+    const key = (first.headers as Record<string, string>)['Idempotency-Key'];
+    expect(key).toBeTruthy();
+    expect((second.headers as Record<string, string>)['Idempotency-Key']).toBe(key);
+    expect(JSON.parse(first.body as string)).toEqual({ prompt: 'Add integrations', async: true });
+  });
+
+  it('accepts a caller replay key and polls the exact edit without another mutation', async () => {
+    const { client, fetchMock } = newClient();
+    fetchMock.mockResolvedValueOnce(ok({ editId: 'edit-1', status: 'pending' }))
+      .mockResolvedValueOnce(ok({ editId: 'edit-1', status: 'completed', result: { html: '<p>saved</p>' } }));
+    await client.emails.startEdit('email', { prompt: 'Add integrations' }, { idempotencyKey: 'weekly-v2' });
+    expect((fetchMock.mock.calls[0][1].headers as Record<string, string>)['Idempotency-Key']).toBe('weekly-v2');
+    const result = await client.emails.getEditStatus('email', 'edit-1');
+    expect(result.data?.result?.html).toBe('<p>saved</p>');
+    expect(lastCall(fetchMock).url).toBe('https://api.test.local/v1/emails/email/edits/edit-1');
+    expect(lastCall(fetchMock).init.method).toBe('GET');
+  });
 });
 
 describe('client v1 resource alignment', () => {

@@ -2,25 +2,107 @@ name: Publish to npm
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
-  id-token: write
   contents: read
 
-jobs:
-  publish:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+concurrency:
+  group: npm-release-${{ github.ref }}
+  cancel-in-progress: false
 
-      - uses: actions/setup-node@v4
+jobs:
+  verify:
+    name: Package checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
-          registry-url: 'https://registry.npmjs.org'
-
       - run: yarn install --frozen-lockfile
+      - run: node --test .github/scripts/release-check.node.mjs
       - run: npm run typecheck
+      - run: npm test --if-present
       - run: npm run build
-      - run: npm publish
+      - run: npm pack --dry-run
+
+  publish:
+    name: Publish new version
+    needs: verify
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Check npm version
+        id: version
+        run: node .github/scripts/release.mjs check
+      - name: Reject conflicting version tag
+        if: steps.version.outputs.publish == 'true' || steps.version.outputs.published_sha == github.sha
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/scripts/release.mjs tag-check
+      - name: Install locked dependencies
+        if: steps.version.outputs.publish == 'true'
+        run: yarn install --frozen-lockfile
+      - name: Build release
+        if: steps.version.outputs.publish == 'true'
+        run: npm run build
+      - name: Publish with npm trusted publishing
+        id: publish
+        if: steps.version.outputs.publish == 'true'
+        run: npm publish --access public --provenance
+      - name: Create version tag (or repair tag after successful publish retry)
+        id: tag
+        if: steps.publish.outcome == 'success' || steps.version.outputs.published_sha == github.sha
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/scripts/release.mjs tag-create
+      - name: Record release result
+        if: always() && steps.version.outcome == 'success'
+        env:
+          PUBLISH_RESULT: ${{ steps.publish.outcome }}
+          NEW_VERSION: ${{ steps.version.outputs.publish }}
+          TAG_RESULT: ${{ steps.tag.outcome }}
+          PUBLISHED_SHA: ${{ steps.version.outputs.published_sha }}
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const status = process.env.PUBLISH_RESULT === 'success' ? 'published'
+            : process.env.NEW_VERSION === 'false' ? 'already-published' : 'failed';
+          const release = {
+            package: pkg.name, version: pkg.version, status, tag_result: process.env.TAG_RESULT,
+            tested_sha: process.env.GITHUB_SHA,
+            published_sha: status === 'published' ? process.env.GITHUB_SHA : process.env.PUBLISHED_SHA || null,
+            run_url: `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+          };
+          fs.writeFileSync(process.env.RUNNER_TEMP + '/npm-release.json', JSON.stringify(release, null, 2) + '\n');
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+            `**${pkg.name}@${pkg.version}**: ${status}\n\nTested commit: ${release.tested_sha}\n\nRestore consumers by pinning an earlier package version in a reviewed dependency PR.\n`);
+          JS
+      - name: Save release record
+        if: always() && steps.version.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: npm-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/npm-release.json
+          retention-days: 90
+          if-no-files-found: error

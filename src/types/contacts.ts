@@ -1,3 +1,5 @@
+import type { SegmentFilters } from './segments';
+
 export type ContactStatus = 'subscribed' | 'unsubscribed' | 'bounced' | 'non-subscribed';
 
 export interface Contact {
@@ -120,4 +122,61 @@ export interface ChangeStatusParams {
   allLists?: boolean;
   tags?: string[];
   projectId: string;
+}
+
+export interface CreateContactExportParams {
+  projectId: string;
+  segmentId?: string;
+  /** Same filters used by saved segments; tags are IDs, not names. */
+  filters?: SegmentFilters & { search?: string };
+}
+
+export interface ContactExportStatus {
+  jobId: string;
+  projectId: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  contactCount: number;
+  fileName: string;
+  createdAt: string;
+  completedAt: string | null;
+  /** Present only after the private CSV has been uploaded. Expires after one hour. */
+  downloadUrl?: string;
+  downloadExpiresAt?: string;
+  error?: string;
+}
+
+export type ContactImportProvider = 'klaviyo' | 'mailchimp' | 'hubspot';
+
+/** A list or segment in the connected provider account that can be imported. */
+export interface ProviderImportSource {
+  id: string;
+  type: 'audience' | 'segment' | 'tag' | 'list';
+  name: string;
+  [key: string]: unknown;
+}
+
+export interface ListProviderImportSourcesParams {
+  provider: ContactImportProvider;
+  projectId: string;
+  /** Only when the brand has several accounts connected for this provider. */
+  connectionId?: string;
+}
+
+export interface ImportFromProviderParams {
+  provider: ContactImportProvider;
+  projectId: string;
+  /** 1 to 25 sources from listProviderImportSources. */
+  sources: Pick<ProviderImportSource, 'id' | 'type' | 'name'>[];
+  /** Default subscribed-only. */
+  consentMode?: 'subscribed-only' | 'include-all';
+  connectionId?: string;
+}
+
+/** Each import becomes a tag and a segment named after its sources. Poll the import with its id. */
+export interface ProviderImportStarted {
+  object: 'contact_import';
+  id: string;
+  status: 'pending';
+  tag: { id: string; name: string };
+  segment: { id: string; name: string };
 }

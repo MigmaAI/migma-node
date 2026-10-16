@@ -100,7 +100,7 @@ await migma.sending.send({
 - Full coverage of all Migma API v1 endpoints (80+ methods across 16 resources)
 - TypeScript-first with complete type definitions
 - `{ data, error }` return pattern — methods never throw
-- Automatic retries with exponential backoff on 5xx/429
+- Automatic retries with exponential backoff on 5xx/429, except unsafe synchronous email edits
 - Polling helpers for async operations (email generation, project import, previews)
 - Zero runtime dependencies (uses native `fetch`)
 - Dual ESM + CommonJS support
@@ -344,10 +344,54 @@ for (const generated of series?.result?.emails ?? []) {
 const { data: email } = await migma.emails.get('email_abc123');
 console.log(email?.html);
 
-await migma.emails.edit('email_abc123', {
+// Existing synchronous edit. Automatic retries are disabled because an
+// ambiguous failure may still have saved changes.
+const syncEdit = await migma.emails.edit('email_abc123', {
   prompt: 'Change the CTA from "Start now" to "Start your trial"',
 });
+
+if (syncEdit.error) {
+  // Fetch and inspect the stored email before manually retrying.
+  await migma.emails.get('email_abc123');
+}
+
+// Queued edit. The SDK creates an idempotency key and reuses it across its
+// HTTP retries. Supply one explicitly to reuse it across caller-level retries.
+const started = await migma.emails.startEdit(
+  'email_abc123',
+  {
+    prompt: 'Use a shorter headline',
+    label: 'Short headline',
+  },
+  { idempotencyKey: 'edit-email_abc123-short-headline' },
+);
+if (started.error) throw started.error;
+
+const polled = await migma.emails.getEditStatus(
+  'email_abc123',
+  started.data.editId,
+);
+if (polled.error) throw polled.error;
+const editStatus = polled.data;
+
+if (editStatus.status === 'completed' && editStatus.result) {
+  console.log(editStatus.result.html);
+}
 ```
+
+`startEdit(emailId, { prompt, label? }, options?: CallOptions)` returns
+`MigmaResult<EmailEditOperation>` after durable queueing. It requires
+`email:write` and `email:read`; credits are checked when the worker starts, and
+no AI work runs on the request path. Its initial response can already have a
+terminal status on an idempotent replay, but does not include `result`. Poll
+`getEditStatus(emailId, editId)` according to `pollAfterMs`.
+
+Use the edit-specific status, not conversation generation status: an earlier
+conversation turn may already be completed. There is no `editAndWait` helper.
+Failed or stalled rewrites are not automatically retried; if a failure reports
+`changesMayHaveBeenSaved`, inspect the stored email before starting another
+edit. Section and image complexity, provider behavior, and retries affect total
+time, so no fixed maximum edit latency is established.
 
 ### Campaigns
 
@@ -418,6 +462,13 @@ characters) and is scoped to your API key for 24 hours:
 - `429` and `5xx` responses are never cached, so they stay safe to retry — and
   the SDK reuses your key across its own automatic retries, so a retried call
   never duplicates.
+
+For queued email edits, idempotency is scoped to the authenticated API key and
+email. The same key with the same prompt and label returns the same
+job; a conflicting body returns `409 IDEMPOTENCY_CONFLICT`. Its receipt remains
+available for at least 24 hours after terminal completion under normal cleanup.
+Keep the same key after an uncertain start. Existing synchronous email edits are
+not idempotent.
 
 ```typescript
 // Sending — key on the recipient + send time
@@ -646,7 +697,7 @@ await migma.images.updateLogos('proj_abc123', {
 | `migma.sending` | `send` `getBatchStatus` | [Sending](https://docs.migma.ai/api-reference/sending/send-email) |
 | `migma.metrics` | `sending` | [API Reference](https://docs.migma.ai/api-reference/introduction) |
 | `migma.projects` | `list` `get` `import` `getImportStatus` `retryImport` `fieldCatalog` `importAndWait` | [Projects](https://docs.migma.ai/api-reference/projects/list-projects) |
-| `migma.emails` | `generate` `importHtml` `getGenerationStatus` `generateAndWait` `importHtmlAndWait` `sendTest` `get` `edit` | [Email Generation](https://docs.migma.ai/api-reference/email/generate-email-async) |
+| `migma.emails` | `generate` `importHtml` `getGenerationStatus` `generateAndWait` `importHtmlAndWait` `sendTest` `get` `edit` `startEdit` `getEditStatus` | [Email Generation](https://docs.migma.ai/api-reference/email/generate-email-async) |
 | `migma.campaigns` | `list` `create` `get` `send` `schedule` `cancel` `stats` `logs` `archive` `unarchive` | [Campaigns](https://docs.migma.ai/campaigns/overview) |
 | `migma.validation` | `all` `compatibility` `links` `spelling` `deliverability` | [Validation](https://docs.migma.ai/api-reference/email-validation/run-all-validation-checks) |
 | `migma.previews` | `create` `get` `getStatus` `getDevice` `getSupportedDevices` `createAndWait` | [Previews](https://docs.migma.ai/api-reference/email-previews/create-email-preview) |

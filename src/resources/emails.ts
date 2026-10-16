@@ -1,4 +1,5 @@
 import type { CallOptions, MigmaClient } from '../client';
+import { randomUUID } from 'node:crypto';
 import type { MigmaResult } from '../types/common';
 import type {
   GenerateEmailParams,
@@ -7,6 +8,7 @@ import type {
   EmailGenerationStatus,
   Email,
   EditEmailParams,
+  EmailEditOperation,
   ListEmailsParams,
   ListEmailsResponse,
   SendTestEmailParams,
@@ -73,14 +75,35 @@ export class Emails {
     return this.client.get<Email>(`/emails/${emailId}`);
   }
 
-  /** Prompt Migma to edit one generated email */
+  /** Synchronous edit. No automatic retries; use startEdit for long edits. */
   async edit(
     emailId: string,
     params: EditEmailParams
   ): Promise<MigmaResult<Email>> {
     return this.client.post<Email>(
       `/emails/${emailId}/edit`,
-      params as unknown as Record<string, unknown>
+      params as unknown as Record<string, unknown>,
+      { maxRetries: 0 }
+    );
+  }
+
+  /** Queue an edit immediately. Retain an explicit key to recover uncertain submissions. */
+  async startEdit(
+    emailId: string,
+    params: EditEmailParams,
+    options?: CallOptions
+  ): Promise<MigmaResult<EmailEditOperation>> {
+    return this.client.post<EmailEditOperation>(
+      `/emails/${encodeURIComponent(emailId)}/edit`,
+      { ...params, async: true },
+      { ...options, idempotencyKey: options?.idempotencyKey || randomUUID() }
+    );
+  }
+
+  /** Poll the exact edit; a completed conversation may belong to an earlier turn. */
+  async getEditStatus(emailId: string, editId: string): Promise<MigmaResult<EmailEditOperation>> {
+    return this.client.get<EmailEditOperation>(
+      `/emails/${encodeURIComponent(emailId)}/edits/${encodeURIComponent(editId)}`
     );
   }
 
