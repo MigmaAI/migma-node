@@ -19,6 +19,8 @@ import { Campaigns } from './resources/campaigns';
 import { Metrics } from './resources/metrics';
 import { Automations } from './resources/automations';
 import { Workspaces } from './resources/workspaces';
+import { Websites } from './resources/websites';
+import { Forms } from './resources/forms';
 
 export interface MigmaConfig {
   /** API base URL. Default: 'https://api.migma.ai/v1' */
@@ -52,6 +54,8 @@ export class Migma {
   readonly metrics: Metrics;
   readonly automations: Automations;
   readonly workspaces: Workspaces;
+  readonly websites: Websites;
+  readonly forms: Forms;
 
   constructor(apiKey: string, config?: MigmaConfig) {
     if (!apiKey) {
@@ -86,5 +90,7 @@ export class Migma {
     this.metrics = new Metrics(this.client);
     this.automations = new Automations(this.client);
     this.workspaces = new Workspaces(this.client);
+    this.websites = new Websites(this.client);
+    this.forms = new Forms(this.client);
   }
 }

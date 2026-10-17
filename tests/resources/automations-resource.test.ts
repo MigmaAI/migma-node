@@ -6,7 +6,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('automation API transport', () => {
   it('retains source entry rules and cutover status from saved flows', async () => {
-    const flow = { id: 'flow', projectId: 'brand', name: 'Checkout', status: 'draft', version: 1,
+    const flow = { id: 'flow', projectId: 'brand', name: 'Checkout', status: 'draft', version: 1, definitionHash: 'a'.repeat(64),
       link: 'https://example.test/flow', reentry: 'perEvent', reentryCooldown: { amount: 10, unit: 'day' }, allowConcurrentReentry: true,
       cancelOn: [{ event: 'ecommerce.order_placed', origin: 'shopify', since: 'trigger', mode: 'exit' }],
       migration: { provider: 'klaviyo', snapshotId: 'snapshot', sourceHash: 'a'.repeat(64), mappingHash: 'b'.repeat(64), status: 'awaiting_cutover', preparedAt: '2026-09-08T12:00:00Z', preparedBy: 'actor' } };
@@ -17,6 +17,17 @@ describe('automation API transport', () => {
     expect(result.data?.reentryCooldown?.amount).toBe(10);
     expect(result.data?.cancelOn?.[0].since).toBe('trigger');
     expect(result.data?.migration?.status).toBe('awaiting_cutover');
+  });
+  it('keeps definition hashes optional on list summaries and imported drafts', async () => {
+    const list = { automations: [{ id: 'flow', projectId: 'brand', name: 'Welcome', status: 'draft', version: 1, link: 'https://example.test/flow' }], count: 1 };
+    const imported = { id: 'import', projectId: 'brand', name: 'Imported flow', status: 'draft', version: 1,
+      link: 'https://example.test/import', sourceImport: { provider: 'klaviyo' } };
+    const fetch = vi.fn().mockResolvedValueOnce(ok(list)).mockResolvedValueOnce(ok(imported));
+    vi.stubGlobal('fetch', fetch);
+    const client = new Migma('test-key', { maxRetries: 0 });
+
+    expect((await client.automations.list('brand')).data?.automations[0].definitionHash).toBeUndefined();
+    expect((await client.automations.get('import')).data?.definitionHash).toBeUndefined();
   });
   it('keeps reporting gaps distinguishable from measured zero', async () => {
     const report = { nodes: [{ nodeId: 'step', campaignId: 'campaign', reporting: { status: 'unavailable', source: 'unavailable' } }], edges: [], reporting: { status: 'unavailable', source: 'campaigns', warnings: ['Tracking unavailable'] } };
@@ -55,8 +66,64 @@ describe('automation API transport', () => {
     const client = new Migma('test-key', { maxRetries: 0 });
     expect((await client.automations.validate('flow')).data).toEqual(checks);
     expect(fetch).toHaveBeenCalledTimes(1);
-    await client.automations.activate('flow', { confirmed: true });
+    await client.automations.activate('flow', { confirmed: true, expectedDefinitionHash: 'a'.repeat(64) });
     expect(fetch.mock.calls[1][0]).toMatch(/\/automations\/flow\/activate$/);
-    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ confirmed: true });
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ confirmed: true, expectedDefinitionHash: 'a'.repeat(64) });
+  });
+
+  it('reuses one idempotency key across retries of every automation write', async () => {
+    const unavailable = () => new Response(JSON.stringify({ success: false, error: 'Busy' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    const fetch = vi.fn().mockImplementation(async () => fetch.mock.calls.length % 2 ? unavailable() : ok({ id: 'flow' }));
+    vi.stubGlobal('fetch', fetch);
+    const client = new Migma('test-key', { retryDelay: 0, maxRetries: 1 });
+    const trigger = { type: 'event' as const, event: { name: 'contact.subscribed' } };
+    await client.automations.validate('flow');
+    await client.automations.activate('flow', { confirmed: true, expectedDefinitionHash: 'a'.repeat(64) });
+    await client.automations.pause('flow');
+    await client.automations.updateTrigger('flow', trigger, 'a'.repeat(64));
+    await client.automations.updateWait('flow', 'wait-1', 'P2D', 'a'.repeat(64), { idempotencyKey: 'wait-edit-1' });
+    const keys = fetch.mock.calls.map(call => (call[1].headers as Record<string, string>)['Idempotency-Key']);
+    expect(keys).toHaveLength(10);
+    for (let i = 0; i < keys.length; i += 2) {
+      expect(keys[i]).toBeTruthy();
+      expect(keys[i + 1]).toBe(keys[i]);
+    }
+    expect(new Set(keys).size).toBe(5);
+    expect(keys.at(-1)).toBe('wait-edit-1');
+    expect(fetch.mock.calls[6][1].method).toBe('PUT');
+  });
+
+  it('reads the period report, graph, trigger events and canonical run detail', async () => {
+    const run = { id: 'run', status: 'failed', subscriber: { id: 'contact' }, currentStepId: null, currentStepKind: null, nextRunAt: null,
+      automationVersion: 2, startedAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-02T00:00:00Z', failureReason: 'Sender domain unverified',
+      triggerEventId: 'event', history: [{ at: '2026-10-01T00:00:00Z', outcome: 'failed' }], historyTotal: 1 };
+    const fetch = vi.fn().mockImplementation(async () => ok(run));
+    vi.stubGlobal('fetch', fetch);
+    const client = new Migma('test-key', { baseUrl: 'https://api.example.test/v1', maxRetries: 0 });
+    await client.automations.report('flow', { startDate: '2026-09-01', endDate: '2026-09-30', timezone: 'Europe/Madrid' });
+    await client.automations.graph('flow');
+    await client.automations.triggerEvents('brand');
+    const detail = await client.automations.getRun('flow', 'run', { historyLimit: 50 });
+    expect(fetch.mock.calls.map(call => call[0])).toEqual([
+      'https://api.example.test/v1/automations/flow/report?startDate=2026-09-01&endDate=2026-09-30&timezone=Europe%2FMadrid',
+      'https://api.example.test/v1/automations/flow/graph',
+      'https://api.example.test/v1/automations/trigger-events?projectId=brand',
+      'https://api.example.test/v1/automations/flow/runs/run?historyLimit=50',
+    ]);
+    expect(detail.data?.failureReason).toBe('Sender domain unverified');
+    expect(detail.data?.subscriber.id).toBe('contact');
+  });
+
+  it('carries the reviewed definition hash through trigger and wait updates', async () => {
+    const fetch = vi.fn().mockResolvedValue(ok({ id: 'flow', definitionHash: 'b'.repeat(64) }));
+    vi.stubGlobal('fetch', fetch);
+    const client = new Migma('test-key', { maxRetries: 0 });
+    const trigger = { type: 'event' as const, event: { name: 'contact.subscribed' } };
+
+    await client.automations.updateTrigger('flow', trigger, 'a'.repeat(64));
+    await client.automations.updateWait('flow', 'wait-1', 'P2D', 'b'.repeat(64));
+
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ trigger, expectedDefinitionHash: 'a'.repeat(64) });
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ duration: 'P2D', expectedDefinitionHash: 'b'.repeat(64) });
   });
 });

@@ -808,6 +808,48 @@ MIT
 
 ## Automations
 
-`migma.automations` creates an off draft from a plain-language brief or workflow screenshots, checks its setup, and manages its status and contact journeys. Generation is asynchronous; keep the returned `jobId` and poll `generationStatus`. Creation does not activate delivery. `activate(id, { confirmed: true })` is only for an explicit user activation request after review.
+`migma.automations` creates an off draft from a plain-language brief or workflow screenshots, checks its setup, and manages its status and contact journeys. Generation is asynchronous; keep the returned `jobId` and poll `generationStatus`. Creation does not activate delivery. After `get(id)` and review, use the returned `definitionHash` to call `activate(id, { confirmed: true, expectedDefinitionHash })` only for an explicit user activation request. Pass the same reviewed hash to `updateTrigger` and `updateWait`; if the API returns `AUTOMATION_GRAPH_CHANGED`, reload and review before retrying. List summaries omit `definitionHash`, and imported migration drafts can omit it until they become a native reviewed flow; do not activate or edit through these methods without an observed hash.
 
-Use `generate`, `generationStatus`, `list`, `get`, `capabilities`, `validate`, `activate`, `pause`, `updateTrigger`, `updateWait`, `runs`, `getRun`, and `metrics`. Automation metrics are a view over the same campaign reports; preserve reporting status and do not count both copies of the same campaign. See [automation tools and API](https://docs.migma.ai/automations/chat-and-api).
+Use `generate`, `generationStatus`, `list`, `get`, `graph`, `capabilities`, `triggerEvents`, `validate`, `activate`, `pause`, `updateTrigger`, `updateWait`, `runs`, `getRun`, `metrics`, and `report`. Automation metrics are a view over the same campaign reports; preserve reporting status and do not count both copies of the same campaign. `report(id, { startDate, endDate, timezone })` returns the canvas send-date report for a period.
+
+Write methods send an `Idempotency-Key` and reuse it across automatic retries, so a retried edit replays its first result instead of returning `AUTOMATION_GRAPH_CHANGED` for its own change. Pass `{ idempotencyKey }` to retry an uncertain call later. `runs` and `getRun` return the same run shape as the Migma dashboard, including `failureReason`, `exitReason` and `suppressionReason`; contact email and name need the `audience:read` scope. `getRun` returns the latest 25 steps by default (`historyLimit` up to 100). Entry rules, other flow settings and run cancellation are only available in Migma. See [automation tools and API](https://docs.migma.ai/automations/chat-and-api).
+
+## Forms
+
+`migma.forms` manages signup forms. Visitors submit through the hosted page (`hostedUrl`) or the embed code (`embed.inline` or `embed.popup`), and submissions emit `form.submitted` and `form.confirmed`, which automations can use as triggers with the form's `id` as `formId`.
+
+```typescript
+const { data: form } = await migma.forms.create({
+  projectId: 'brand-id',
+  spec: {
+    kind: 'subscribe',
+    steps: [{ id: 'signup', headline: 'Join the list', ctaLabel: 'Subscribe',
+      fields: [{ key: 'email', label: 'Email', type: 'email', required: true }] }],
+    confirmation: { mode: 'message', value: 'Thanks for joining!' },
+    styleTokens: {},
+  },
+  tagIds: ['tag-id'],
+});
+await migma.forms.publish(form!.id);
+```
+
+`create` and `update` change the draft only; `publish` makes it live, within your plan's live form limit. A double opt-in form needs a verified transactional sender before it can be published. `pause` and `delete` return `409 FORM_USED_BY_AUTOMATION` while an enabled automation starts from the form; pause that automation or change its trigger first. `get` includes view, submission and confirmation counters (`null` when reporting is unavailable) and the automations that use the form. `submissions` needs the `audience:read` scope. Write methods send an `Idempotency-Key`, reused across automatic retries.
+
+### Submitting from your own form
+
+If you collect signups in your own UI, submit them from your server with `submit`. It runs the live form's own rules: its fields, tags, attribution and double opt-in, and the same `form.submitted` and `form.confirmed` events.
+
+```typescript
+const { data } = await migma.forms.submit(form!.id, {
+  email: 'ada@example.com',
+  fields: { firstName: 'Ada', consent: true },
+  attribution: { utmSource: 'launch', referrer: 'https://example.com/pricing' },
+});
+// data.state: 'received' | 'confirmation_pending'
+```
+
+- Only a live form accepts submissions (`409 FORM_NOT_LIVE` otherwise). Field keys must match the form; unknown keys are rejected.
+- It only adds: a new contact is subscribed (or, with double opt-in, emailed a confirmation link), tags are added and submitted fields saved. An existing contact keeps its status, including unsubscribed and bounced contacts, and the result is the same either way. To subscribe someone who is already a contact but not subscribed, use a double opt-in form so they confirm themselves.
+- The API answers `201` for a new submission, `200` with `duplicate: true` when the same API key already submitted that email to that form (`submissionId` is a hash of the three), and `202` with `state: 'confirmation_pending'` for double opt-in.
+- Each submission records your API key and the time as consent evidence on the `form.submitted` event; new contacts get `signup_source: 'api'` and any `attribution` as `signup_*` custom fields.
+- Needs the `campaign:write` and `audience:write` scopes. An `Idempotency-Key` is required; the SDK sends one per call and reuses it across retries. Submissions are rate limited per API key (60 per minute) in addition to your account's limit.
