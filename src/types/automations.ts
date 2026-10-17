@@ -200,18 +200,59 @@ export interface AutomationReportParams {
   timezone: string;
 }
 
+/** Attributed orders and net sales; present only when revenue reporting is available. */
+export interface FlowReportSales {
+  status: 'live' | 'partial';
+  orders: number;
+  /** Orders ÷ delivered, a percentage; null when nothing was delivered. */
+  orderRate: number | null;
+  /** Never add currencies together. Amounts are in minor units (cents). */
+  currencies: Array<{ currency: string; scale: number; orders: number; netMinor: number; netPerDeliveredMinor: number | null }>;
+}
+
+/** Send-date counts. Rates are percentages to two decimals and null, never 0, when there is nothing to divide by. */
+export interface FlowReportCounts {
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  bounced: number;
+  unsubscribed: number;
+  /** Null when the tracking source cannot report spam complaints. */
+  complained: number | null;
+  openRate: number | null;
+  clickRate: number | null;
+  bounceRate: number | null;
+  unsubscribeRate: number | null;
+  complaintRate: number | null;
+  sales?: FlowReportSales;
+}
+
+/** One email step: every version of it, including sends made before an edit. Counts are absent when its report is unavailable. */
+export interface FlowReportNode extends Partial<FlowReportCounts> {
+  nodeId: string;
+  stepId?: string;
+  campaignId?: string;
+  /** Every campaign version of this step. */
+  campaignIds: string[];
+  variants?: Array<FlowReportCounts & { id: string; name: string; subject?: string; weight: number; campaignId?: string; campaignIds: string[]; winner: boolean }>;
+  reporting: { status: string; source: string; reason?: string };
+}
+
 /** Send-date report for a period, matching the canvas. Missing numbers are unavailable, not zero. */
 export interface AutomationReport {
   version: number;
   cohort: 'send-date';
-  scope: 'current-steps';
+  scope: 'all-versions';
+  /** The wording of every metric, shared with the dashboard and agents. */
+  definitions: Record<string, string>;
   window: Record<string, unknown>;
   generatedAt: string;
   engagement: string;
   testSends: 'excluded';
   revenue: { status: string; reason?: string; [key: string]: unknown };
-  nodes: Array<AutomationMetrics['nodes'][number] & { variants?: Array<Record<string, unknown>> }>;
-  totals: Record<string, number> | null;
+  nodes: FlowReportNode[];
+  totals: FlowReportCounts | null;
   coverage?: { since: string; complete: boolean; unclassifiedSends?: number };
   reporting: AutomationMetrics['reporting'];
 }
