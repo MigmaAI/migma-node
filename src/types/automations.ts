@@ -223,7 +223,6 @@ export interface AutomationGraph {
   edges: Array<Record<string, unknown>>;
   revision: number;
   sourceImport?: Record<string, unknown>;
-  flowEmailArtifactIds?: string[];
 }
 
 export interface AutomationMetrics {

@@ -80,4 +80,16 @@ describe('forms API transport', () => {
     expect(result.error?.serverCode).toBe('FORM_USED_BY_AUTOMATION');
     expect(result.error?.data).toEqual({ automations });
   });
+
+  it('names a form on create and renames or clears it on update', async () => {
+    const fetch = vi.fn(async () => ok({ id: 'form', name: 'Spring waitlist' }));
+    vi.stubGlobal('fetch', fetch);
+    const client = new Migma('test-key', { baseUrl: 'https://api.example.test/v1', retryDelay: 0, maxRetries: 0 });
+    const created = await client.forms.create({ projectId: 'brand', name: 'Spring waitlist', spec });
+    await client.forms.update('form', { name: 'Summer waitlist' });
+    await client.forms.update('form', { name: null });
+    const bodies = fetch.mock.calls.map(call => JSON.parse((call as unknown as [string, RequestInit])[1].body as string));
+    expect(created.data?.name).toBe('Spring waitlist');
+    expect(bodies).toEqual([{ projectId: 'brand', name: 'Spring waitlist', spec }, { name: 'Summer waitlist' }, { name: null }]);
+  });
 });

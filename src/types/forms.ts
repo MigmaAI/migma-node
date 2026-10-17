@@ -52,6 +52,8 @@ export interface FormSpec {
 export interface Form {
   id: string;
   projectId: string;
+  /** The brand's name for the form; unnamed forms read as their first headline, then their type. Visitors never see it. */
+  name: string;
   kind: FormKind;
   status: FormStatus;
   /** Opaque ID used by the hosted page and embed. */
@@ -83,6 +85,8 @@ export interface FormDetail extends Form {
 
 export interface CreateFormParams {
   projectId: string;
+  /** Up to 120 characters; shown in form lists, never to visitors. */
+  name?: string;
   spec: FormSpec;
   tagIds?: string[];
   /** Saved audience ID; defaults to every contact in the brand. */
@@ -90,6 +94,8 @@ export interface CreateFormParams {
 }
 
 export interface UpdateFormParams {
+  /** Renames at once, live or draft; null clears it. */
+  name?: string | null;
   /** Merged into the draft; publish() makes it live. */
   spec?: Partial<FormSpec>;
   tagIds?: string[];
