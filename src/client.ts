@@ -65,13 +65,10 @@ export class MigmaClient {
           body: options.body ? JSON.stringify(options.body) : undefined,
         });
 
-        const json = (await response.json()) as ApiResponse<T>;
+        const json = await readJson<T>(response);
 
-        if (!response.ok || !json.success) {
-          const error = new MigmaError(
-            json.error || `Request failed with status ${response.status}`,
-            response.status
-          );
+        if (!response.ok || !json?.success) {
+          const error = new MigmaError(failureMessage(response, json), response.status);
 
           if (response.status >= 500 || response.status === 429) {
             lastError = error;
@@ -123,15 +120,12 @@ export class MigmaClient {
         body: options.body ? JSON.stringify(options.body) : undefined,
       });
 
-      const json = (await response.json()) as ApiResponse<T>;
+      const json = await readJson<T>(response);
 
-      if (!response.ok || !json.success) {
+      if (!response.ok || !json?.success) {
         return {
           data: null,
-          error: new MigmaError(
-            json.error || `Request failed with status ${response.status}`,
-            response.status
-          ),
+          error: new MigmaError(failureMessage(response, json), response.status),
         };
       }
 
@@ -219,4 +213,21 @@ export class MigmaClient {
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
+}
+
+/** A gateway or proxy can answer with an HTML page; report its status instead of a JSON parse error. */
+async function readJson<T>(response: Response): Promise<ApiResponse<T> | null> {
+  const text = await response.text();
+  try {
+    return JSON.parse(text) as ApiResponse<T>;
+  } catch {
+    return null;
+  }
+}
+
+function failureMessage(response: Response, json: ApiResponse<unknown> | null): string {
+  if (json?.error) return json.error;
+  return json
+    ? `Request failed with status ${response.status}`
+    : `Request failed with status ${response.status}: the server did not return JSON`;
 }
