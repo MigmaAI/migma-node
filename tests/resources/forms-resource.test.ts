@@ -59,7 +59,12 @@ describe('forms API transport', () => {
       .mockResolvedValueOnce(ok({ ...result, state: 'confirmation_pending' }, 202));
     vi.stubGlobal('fetch', fetch);
     const client = new Migma('test-key', { baseUrl: 'https://api.example.test/v1', retryDelay: 0, maxRetries: 1 });
-    const params = { email: 'ada@example.com', fields: { firstName: 'Ada', consent: true }, attribution: { utmSource: 'launch' } };
+    const params = {
+      email: 'ada@example.com',
+      fields: { firstName: 'Ada', consent: true },
+      attribution: { utmSource: 'launch' },
+      consent: { ip: '203.0.113.10', userAgent: 'Signup UI/1.0' },
+    };
     const first = await client.forms.submit('form', params);
     expect(first.data).toEqual(result);
     const second = await client.forms.submit('form', params, { idempotencyKey: 'signup-1' });

@@ -19,14 +19,17 @@ describe('automation API transport', () => {
     expect(result.data?.migration?.status).toBe('awaiting_cutover');
   });
   it('keeps definition hashes optional on list summaries and imported drafts', async () => {
-    const list = { automations: [{ id: 'flow', projectId: 'brand', name: 'Welcome', status: 'draft', version: 1, link: 'https://example.test/flow' }], count: 1 };
+    const list = { automations: [{ id: 'flow', projectId: 'brand', name: 'Welcome', status: 'draft', version: 1, link: 'https://example.test/flow' }], count: 1, nextCursor: 'next-page' };
     const imported = { id: 'import', projectId: 'brand', name: 'Imported flow', status: 'draft', version: 1,
       link: 'https://example.test/import', sourceImport: { provider: 'klaviyo' } };
     const fetch = vi.fn().mockResolvedValueOnce(ok(list)).mockResolvedValueOnce(ok(imported));
     vi.stubGlobal('fetch', fetch);
     const client = new Migma('test-key', { maxRetries: 0 });
 
-    expect((await client.automations.list('brand')).data?.automations[0].definitionHash).toBeUndefined();
+    const page = await client.automations.list('brand', { cursor: 'previous-page', limit: 50, includeArchived: true });
+    expect(page.data?.automations[0].definitionHash).toBeUndefined();
+    expect(page.data?.nextCursor).toBe('next-page');
+    expect(fetch.mock.calls[0][0]).toBe('https://api.migma.ai/v1/automations?projectId=brand&cursor=previous-page&limit=50&includeArchived=true');
     expect((await client.automations.get('import')).data?.definitionHash).toBeUndefined();
   });
   it('keeps reporting gaps distinguishable from measured zero', async () => {
@@ -40,8 +43,11 @@ describe('automation API transport', () => {
   it('keeps the same idempotency key and image reference when a submission retries', async () => {
     const fetch = vi.fn().mockRejectedValueOnce(new Error('temporary network failure')).mockResolvedValueOnce(ok({ jobId: 'job', status: 'queued' }));
     vi.stubGlobal('fetch', fetch);
-    const client = new Migma('test-key', { baseUrl: 'https://api.example.test/v1', retryDelay: 0, maxRetries: 1 });
-    const result = await client.automations.generate({ projectId: 'brand', brief: 'Recreate the flow', imageUrls: ['https://example.test/flow.png'] });
+    const client = new Migma('test-key', { baseUrl: 'https://api.example.test/v1', retryDelay: 0, maxRetries: 0 });
+    const result = await client.automations.generate(
+      { projectId: 'brand', brief: 'Recreate the flow', imageUrls: ['https://example.test/flow.png'] },
+      { maxRetries: 1 }
+    );
     expect(result.data?.jobId).toBe('job');
     expect(fetch).toHaveBeenCalledTimes(2);
     const requests = fetch.mock.calls.map(call => call[1] as RequestInit);
@@ -49,6 +55,21 @@ describe('automation API transport', () => {
     expect(key).toBeTruthy();
     expect((requests[1].headers as Record<string, string>)['Idempotency-Key']).toBe(key);
     expect(JSON.parse(requests[1].body as string)).toEqual({ projectId: 'brand', brief: 'Recreate the flow', imageUrls: ['https://example.test/flow.png'] });
+  });
+
+  it('honors maxRetries 0 for generation when the client retry default is higher', async () => {
+    const fetch = vi.fn().mockRejectedValue(new Error('temporary network failure'));
+    vi.stubGlobal('fetch', fetch);
+    const client = new Migma('test-key', { retryDelay: 0, maxRetries: 2 });
+
+    const result = await client.automations.generate(
+      { projectId: 'brand', brief: 'Welcome subscribers' },
+      { maxRetries: 0 }
+    );
+
+    expect(result.data).toBeNull();
+    expect(result.error?.message).toBe('temporary network failure');
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it('preserves a caller-provided key across separate logical retries', async () => {

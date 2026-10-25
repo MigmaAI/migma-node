@@ -72,6 +72,23 @@ export interface Automation {
   };
 }
 
+/** Optional cursor page controls for list(). */
+export interface AutomationListParams {
+  /** Opaque cursor returned by the previous page. */
+  cursor?: string;
+  /** 1-200; defaults to 200. */
+  limit?: number;
+  /** Archived flows are omitted unless explicitly included. */
+  includeArchived?: boolean;
+}
+
+/** One page of automation summaries, newest edited first. */
+export interface AutomationListPage {
+  automations: Automation[];
+  count: number;
+  nextCursor: string | null;
+}
+
 export type AutomationAudienceGate =
   | { type: 'segment'; id: string; name?: string; count?: number }
   | { type: 'tag'; id: string; name?: string; count?: number }

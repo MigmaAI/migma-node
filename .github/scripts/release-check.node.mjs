@@ -16,6 +16,13 @@ test('new stable version releases; scoped package request uses official registry
     return response(metadata);
   });
   assert.equal(result.publish, true);
+  assert.equal(result.dist_tag, 'latest');
+});
+
+test('approved automations prerelease uses its preview tag', async () => {
+  const result = await releaseStatus({ ...pkg, version: '1.8.0-automations.1' }, async () => response(metadata));
+  assert.equal(result.publish, true);
+  assert.equal(result.dist_tag, 'automations-preview');
 });
 
 test('published version skips and retains original commit for retry recovery', async () => {
@@ -34,10 +41,10 @@ test('unpublished older version cannot replace latest', async () => {
   await assert.rejects(releaseStatus({ ...pkg, version: '1.6.9' }, async () => response(metadata)), /greater than npm latest/);
 });
 
-test('invalid, prerelease, and private packages fail before network', async () => {
+test('invalid, unapproved prerelease, and private packages fail before network', async () => {
   const unexpected = () => { throw new Error('network must not run'); };
   for (const version of ['1.7.3-beta.1', '1.7.3\n', '01.7.3', '1.7', '1.7.3\ninjected=true']) {
-    await assert.rejects(releaseStatus({ ...pkg, version }, unexpected), /stable major.minor.patch/);
+    await assert.rejects(releaseStatus({ ...pkg, version }, unexpected), /approved automations prerelease/);
   }
   await assert.rejects(releaseStatus({ ...pkg, private: true }, unexpected), /public npm package/);
 });

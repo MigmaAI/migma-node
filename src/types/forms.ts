@@ -113,11 +113,21 @@ export interface FormSubmissionAttribution {
   landingUrl?: string;
 }
 
+/** Original request details supplied as consent evidence. */
+export interface FormSubmissionConsent {
+  /** The signing-up person's IP address. The API stores it hashed. */
+  ip?: string;
+  /** The signing-up person's user agent, up to 1000 characters. */
+  userAgent?: string;
+}
+
 export interface SubmitFormParams {
   email: string;
   /** Values keyed by the form's field keys; checkboxes may be booleans. Unknown keys are rejected. */
   fields?: Record<string, string | boolean>;
   attribution?: FormSubmissionAttribution;
+  /** Original signup request evidence. Never substitute the SDK host or agent's request details. */
+  consent?: FormSubmissionConsent;
 }
 
 export interface FormSubmitResult {

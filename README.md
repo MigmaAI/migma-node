@@ -810,7 +810,7 @@ MIT
 
 `migma.automations` creates an off draft from a plain-language brief or workflow screenshots, checks its setup, and manages its status and contact journeys. Generation is asynchronous; keep the returned `jobId` and poll `generationStatus`. Creation does not activate delivery. After `get(id)` and review, use the returned `definitionHash` to call `activate(id, { confirmed: true, expectedDefinitionHash })` only for an explicit user activation request. Pass the same reviewed hash to `updateTrigger` and `updateWait`; if the API returns `AUTOMATION_GRAPH_CHANGED`, reload and review before retrying. List summaries omit `definitionHash`, and imported migration drafts can omit it until they become a native reviewed flow; do not activate or edit through these methods without an observed hash.
 
-Use `generate`, `generationStatus`, `list`, `get`, `graph`, `capabilities`, `triggerEvents`, `validate`, `activate`, `pause`, `updateTrigger`, `updateWait`, `runs`, `getRun`, `metrics`, and `report`. Automation metrics are a view over the same campaign reports; preserve reporting status and do not count both copies of the same campaign. `report(id, { startDate, endDate, timezone })` returns the canvas send-date report for a period.
+Use `generate`, `generationStatus`, `list`, `get`, `graph`, `capabilities`, `triggerEvents`, `validate`, `activate`, `pause`, `updateTrigger`, `updateWait`, `runs`, `getRun`, `metrics`, and `report`. `list(projectId, { cursor, limit, includeArchived })` returns `nextCursor` for the next page and omits archived flows unless requested. Automation metrics are a view over the same campaign reports; preserve reporting status and do not count both copies of the same campaign. `report(id, { startDate, endDate, timezone })` returns the canvas send-date report for a period.
 
 Write methods send an `Idempotency-Key` and reuse it across automatic retries, so a retried edit replays its first result instead of returning `AUTOMATION_GRAPH_CHANGED` for its own change. Pass `{ idempotencyKey }` to retry an uncertain call later. `runs` and `getRun` return the same run shape as the Migma dashboard, including `failureReason`, `exitReason` and `suppressionReason`; contact email and name need the `audience:read` scope. `getRun` returns the latest 25 steps by default (`historyLimit` up to 100). Entry rules, other flow settings and run cancellation are only available in Migma. See [automation tools and API](https://docs.migma.ai/automations/chat-and-api).
 
@@ -844,6 +844,7 @@ const { data } = await migma.forms.submit(form!.id, {
   email: 'ada@example.com',
   fields: { firstName: 'Ada', consent: true },
   attribution: { utmSource: 'launch', referrer: 'https://example.com/pricing' },
+  consent: { ip: request.ip, userAgent: request.headers['user-agent'] },
 });
 // data.state: 'received' | 'confirmation_pending'
 ```
@@ -851,5 +852,5 @@ const { data } = await migma.forms.submit(form!.id, {
 - Only a live form accepts submissions (`409 FORM_NOT_LIVE` otherwise). Field keys must match the form; unknown keys are rejected.
 - It only adds: a new contact is subscribed (or, with double opt-in, emailed a confirmation link), tags are added and submitted fields saved. An existing contact keeps its status, including unsubscribed and bounced contacts, and the result is the same either way. To subscribe someone who is already a contact but not subscribed, use a double opt-in form so they confirm themselves.
 - The API answers `201` for a new submission, `200` with `duplicate: true` when the same API key already submitted that email to that form (`submissionId` is a hash of the three), and `202` with `state: 'confirmation_pending'` for double opt-in.
-- Each submission records your API key and the time as consent evidence on the `form.submitted` event; new contacts get `signup_source: 'api'` and any `attribution` as `signup_*` custom fields.
+- Each submission records your API key and the time as consent evidence on the `form.submitted` event; new contacts get `signup_source: 'api'` and any `attribution` as `signup_*` custom fields. When your server has the original signup request, pass its `ip` and `userAgent` in `consent`; never substitute the SDK host or an agent's request details.
 - Needs the `campaign:write` and `audience:write` scopes. An `Idempotency-Key` is required; the SDK sends one per call and reuses it across retries. Submissions are rate limited per API key (60 per minute) in addition to your account's limit.

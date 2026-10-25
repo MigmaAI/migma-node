@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { CallOptions, MigmaClient } from '../client';
-import type { Automation, AutomationCapabilities, AutomationEventTrigger, AutomationGeneration, AutomationGenerateParams, AutomationGraph, AutomationMetrics, AutomationReport, AutomationReportParams, AutomationRun, AutomationRunDetail, AutomationRuns, AutomationTriggerEvents, AutomationValidation } from '../types/automations';
+import type { Automation, AutomationCapabilities, AutomationEventTrigger, AutomationGeneration, AutomationGenerateParams, AutomationGraph, AutomationListPage, AutomationListParams, AutomationMetrics, AutomationReport, AutomationReportParams, AutomationRun, AutomationRunDetail, AutomationRuns, AutomationTriggerEvents, AutomationValidation } from '../types/automations';
 
 /**
  * Conversational drafts and their execution state use the same API as chat.
@@ -15,8 +15,9 @@ export class Automations {
     return { ...options, idempotencyKey: options?.idempotencyKey ?? randomUUID() };
   }
 
-  list(projectId: string) {
-    return this.client.get<{ automations: Automation[]; count: number }>('/automations', { projectId });
+  /** Newest edited first. Archived flows are omitted unless requested. */
+  list(projectId: string, params: AutomationListParams = {}) {
+    return this.client.get<AutomationListPage>('/automations', { projectId, ...params });
   }
 
   capabilities(projectId: string) {
@@ -49,9 +50,7 @@ export class Automations {
 
   /** Creates an off draft. Keep the key when retrying an uncertain submission. */
   generate(params: AutomationGenerateParams, options?: CallOptions) {
-    return this.client.post<AutomationGeneration>('/automations/generate', { ...params }, {
-      idempotencyKey: options?.idempotencyKey ?? randomUUID(),
-    });
+    return this.client.post<AutomationGeneration>('/automations/generate', { ...params }, this.keyed(options));
   }
 
   generationStatus(jobId: string) {

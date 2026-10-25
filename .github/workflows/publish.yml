@@ -68,7 +68,7 @@ jobs:
       - name: Publish with npm trusted publishing
         id: publish
         if: steps.version.outputs.publish == 'true'
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance --tag "${{ steps.version.outputs.dist_tag }}"
       - name: Create version tag (or repair tag after successful publish retry)
         id: tag
         if: steps.publish.outcome == 'success' || steps.version.outputs.published_sha == github.sha

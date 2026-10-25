@@ -1,15 +1,20 @@
 import { appendFileSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
-function stableVersion(version) {
-  if (typeof version !== 'string' || version.trim() !== version || !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
-    throw new Error('Releases require a stable major.minor.patch version, such as 1.8.2.');
+function releaseVersion(version) {
+  if (typeof version !== 'string' || version.trim() !== version) {
+    throw new Error('Releases require major.minor.patch or an approved automations prerelease.');
   }
-  return version.split('.').map(BigInt);
+  const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-automations\.(0|[1-9]\d*))?$/.exec(version);
+  if (!match) throw new Error('Releases require major.minor.patch or an approved automations prerelease.');
+  return {
+    parts: match.slice(1, 4).map(BigInt),
+    dist_tag: match[4] === undefined ? 'latest' : 'automations-preview',
+  };
 }
 
 export async function releaseStatus(pkg, request = fetch) {
-  const parts = stableVersion(pkg.version);
+  const { parts, dist_tag } = releaseVersion(pkg.version);
   if (pkg.private || typeof pkg.name !== 'string' || pkg.name.trim() !== pkg.name || !/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/.test(pkg.name)) {
     throw new Error('Expected a public npm package.');
   }
@@ -29,18 +34,18 @@ export async function releaseStatus(pkg, request = fetch) {
       throw new Error('Invalid published version metadata.');
     }
     if (published.gitHead && !/^[a-f0-9]{40}$/.test(published.gitHead)) throw new Error('Invalid published commit SHA.');
-    return { name: pkg.name, version: pkg.version, publish: false, published_sha: published.gitHead || '' };
+    return { name: pkg.name, version: pkg.version, publish: false, published_sha: published.gitHead || '', dist_tag };
   }
-  const latest = stableVersion(metadata['dist-tags']?.latest);
-  const firstDifference = parts.findIndex((part, index) => part !== latest[index]);
-  if (firstDifference < 0 || parts[firstDifference] < latest[firstDifference]) {
+  const latest = releaseVersion(metadata['dist-tags']?.latest);
+  const firstDifference = parts.findIndex((part, index) => part !== latest.parts[index]);
+  if (firstDifference < 0 || parts[firstDifference] < latest.parts[firstDifference]) {
     throw new Error('New release version must be greater than npm latest.');
   }
-  return { name: pkg.name, version: pkg.version, publish: true, published_sha: '' };
+  return { name: pkg.name, version: pkg.version, publish: true, published_sha: '', dist_tag };
 }
 
 export async function releaseTag({ repository, sha, version, token, create = false }, request = fetch) {
-  stableVersion(version);
+  releaseVersion(version);
   if (typeof repository !== 'string' || repository.trim() !== repository || typeof sha !== 'string' || sha.trim() !== sha || !/^[A-Za-z0-9][\w.-]*\/[A-Za-z0-9][\w.-]*$/.test(repository || '') || !/^[a-f0-9]{40}$/.test(sha || '') || !token) {
     throw new Error('Tag check requires repository, exact commit SHA, and GitHub token.');
   }
