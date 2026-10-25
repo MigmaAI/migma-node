@@ -22,6 +22,8 @@ export interface Campaign {
   status: CampaignStatus;
   scheduledAt?: string | null;
   scheduledTimezone?: string | null;
+  /** True when the scheduled clock time is used in each contact's own time zone. */
+  localTimeDelivery?: boolean;
   batchId?: string | null;
   sentAt?: string | null;
   completedAt?: string | null;
@@ -69,6 +71,13 @@ export interface ListCampaignsResponse {
 export interface ScheduleCampaignParams {
   scheduledAt: string;
   scheduledTimezone?: string;
+  /**
+   * Send at the clock time of `scheduledAt` in `scheduledTimezone`, in each contact's own time zone (by country).
+   * Requires `scheduledTimezone`. Contacts without a country get it at `scheduledAt`; where that time has passed,
+   * the same time the next day. Not available with A/B tests or batch sending. Omit to keep the campaign's current
+   * setting; `false` turns it off.
+   */
+  localTimeDelivery?: boolean;
 }
 
 /**

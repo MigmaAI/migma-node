@@ -424,6 +424,13 @@ await migma.campaigns.schedule(
   { idempotencyKey: `campaign-send-${campaign.id}` },
 );
 
+// Or 11:00 in each contact's own time zone (by country), the same clock time as 11:00 New York
+await migma.campaigns.schedule(campaign.id, {
+  scheduledAt: '2026-07-01T15:00:00Z',
+  scheduledTimezone: 'America/New_York',
+  localTimeDelivery: true,
+});
+
 // Aggregated engagement metrics (cached, may be slightly stale)
 const { data: stats } = await migma.campaigns.stats(campaign.id);
 console.log(stats?.openRate, stats?.clickRate, stats?.lastUpdated);
