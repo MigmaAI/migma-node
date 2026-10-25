@@ -46,13 +46,17 @@ export async function poll<T>(
     }
 
     await new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, interval);
-      if (options?.signal) {
-        const onAbort = () => {
-          clearTimeout(timer);
-          resolve();
-        };
-        options.signal.addEventListener('abort', onAbort, { once: true });
+      const signal = options?.signal;
+      const finish = () => {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', finish);
+        resolve();
+      };
+      const timer = setTimeout(finish, interval);
+      signal?.addEventListener('abort', finish, { once: true });
+      // The signal may have aborted while fetching or running onPoll.
+      if (signal?.aborted) {
+        finish();
       }
     });
   }
