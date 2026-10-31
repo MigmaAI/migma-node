@@ -31,6 +31,27 @@ describe('client.campaigns.schedule', () => {
     expect(data?.localTimeDelivery).toBe(true);
   });
 
+  it('sends what to do where the local time has already passed', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
+      success: true,
+      data: { id: 'cmp_1', status: 'scheduled', localTimeDelivery: true, localTimePassed: 'next_day' },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new Migma('mgm_test', { baseUrl: 'https://api.test.local/v1', maxRetries: 0, retryDelay: 0 });
+    const body = {
+      scheduledAt: '2026-07-01T07:00:00Z',
+      scheduledTimezone: 'Europe/Rome',
+      localTimeDelivery: true,
+      localTimePassed: 'next_day' as const,
+    };
+
+    const { data } = await client.campaigns.schedule('cmp_1', body);
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toStrictEqual(body);
+    expect(data?.localTimePassed).toBe('next_day');
+  });
+
   it.each([
     ['sends false to turn local time off', { localTimeDelivery: false }],
     ['leaves local time out to keep the current setting', {}],
