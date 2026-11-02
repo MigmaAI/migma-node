@@ -26,6 +26,24 @@ export interface FormStateCopy {
   body?: string;
 }
 
+/** How the hosted page arranges the form. split and banner show brand.imageUrl. */
+export type FormLayout = 'card' | 'split' | 'banner' | 'minimal';
+
+/**
+ * Brand assets the form shows. Migma fills these from the brand when it writes
+ * the form; a published form keeps them until it is published again. https URLs.
+ */
+export interface FormBrand {
+  logoUrl?: string;
+  logoAlt?: string;
+  /** A brand photo for the split and banner layouts. */
+  imageUrl?: string;
+  /** CSS font-family stack; the font loads when the form's font starts with it. */
+  fontFamily?: string;
+  /** Google Fonts stylesheet or a .woff2/.woff/.ttf/.otf file for fontFamily. */
+  fontUrl?: string;
+}
+
 /** What the hosted page and embed render. 1-5 steps and 1-10 fields in total. */
 export interface FormSpec {
   kind: FormKind;
@@ -47,6 +65,9 @@ export interface FormSpec {
    */
   confirmation: { mode: 'message' | 'redirect' | 'doubleOptIn'; value: string };
   styleTokens: Record<string, string>;
+  /** Forms without a layout render as card. */
+  layout?: FormLayout;
+  brand?: FormBrand;
 }
 
 export interface Form {

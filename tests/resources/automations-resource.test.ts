@@ -92,6 +92,18 @@ describe('automation API transport', () => {
     expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ confirmed: true, expectedDefinitionHash: 'a'.repeat(64) });
   });
 
+  it('runs a no-send test with no body and no idempotency key', async () => {
+    const testRun = { status: 'blocked', reachedEmails: 0, stoppedAt: 'Email: This step has no saved email to use.', path: ['Trigger matched', 'Email'] };
+    const fetch = vi.fn().mockResolvedValue(ok(testRun));
+    vi.stubGlobal('fetch', fetch);
+    const client = new Migma('test-key', { baseUrl: 'https://api.example.test/v1', maxRetries: 0 });
+    expect((await client.automations.simulate('flow')).data).toEqual(testRun);
+    expect(fetch.mock.calls[0][0]).toBe('https://api.example.test/v1/automations/flow/simulation');
+    expect(fetch.mock.calls[0][1].method).toBe('POST');
+    expect(fetch.mock.calls[0][1].body).toBeUndefined();
+    expect(fetch.mock.calls[0][1].headers['Idempotency-Key']).toBeUndefined();
+  });
+
   it('reuses one idempotency key across retries of every automation write', async () => {
     const unavailable = () => new Response(JSON.stringify({ success: false, error: 'Busy' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
     const fetch = vi.fn().mockImplementation(async () => fetch.mock.calls.length % 2 ? unavailable() : ok({ id: 'flow' }));

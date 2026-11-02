@@ -24,6 +24,18 @@ describe('forms API transport', () => {
     ]);
   });
 
+  it('sends the designer layout and brand assets as part of the spec', async () => {
+    const fetch = vi.fn().mockResolvedValue(ok({ id: 'form' }));
+    vi.stubGlobal('fetch', fetch);
+    const client = new Migma('test-key', { baseUrl: 'https://api.example.test/v1', maxRetries: 0 });
+    const designed: FormSpec = { ...spec, layout: 'split', brand: { logoUrl: 'https://cdn.example.test/logo.png', logoAlt: 'Example',
+      imageUrl: 'https://cdn.example.test/hero.jpg', fontFamily: '"Inter", sans-serif', fontUrl: 'https://fonts.googleapis.com/css2?family=Inter' } };
+    await client.forms.create({ projectId: 'brand', spec: designed });
+    await client.forms.update('form', { spec: { layout: 'banner' } });
+    expect(JSON.parse(fetch.mock.calls[0][1].body).spec).toMatchObject({ layout: 'split', brand: designed.brand });
+    expect(JSON.parse(fetch.mock.calls[1][1].body).spec).toEqual({ layout: 'banner' });
+  });
+
   it('sends draft writes and lifecycle actions with one replay key per call, kept across retries', async () => {
     const unavailable = () => new Response(JSON.stringify({ success: false, error: 'Busy' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
     const fetch = vi.fn().mockImplementation(async () => fetch.mock.calls.length % 2 ? unavailable() : ok({ id: 'form' }));

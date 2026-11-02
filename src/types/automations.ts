@@ -164,6 +164,17 @@ export interface AutomationValidation {
   activation: { requiresConfirmation: boolean; link: string };
 }
 
+/** One sample contact through the saved flow, clock fast-forwarded. Nothing is sent. */
+export interface AutomationDryRun {
+  status: 'completed' | 'waiting' | 'blocked' | 'not_matched' | 'exited' | 'suppressed' | 'ready';
+  /** Email steps the sample contact reached; none were sent. */
+  reachedEmails: number;
+  /** Where and why the sample contact stopped; absent when it completed. */
+  stoppedAt?: string;
+  /** Up to 12 step titles; email steps read "Would send: <title>". */
+  path: string[];
+}
+
 /** One contact's journey, in the same shape as the Migma dashboard. */
 export interface AutomationRun {
   id: string;

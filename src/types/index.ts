@@ -22,3 +22,5 @@ export * from './workspaces';
 export * from './connected-tools';
 export * from './websites';
 export * from './forms';
+export * from './goals';
+export * from './landing-pages';

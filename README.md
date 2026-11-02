@@ -861,3 +861,32 @@ const { data } = await migma.forms.submit(form!.id, {
 - The API answers `201` for a new submission, `200` with `duplicate: true` when the same API key already submitted that email to that form (`submissionId` is a hash of the three), and `202` with `state: 'confirmation_pending'` for double opt-in.
 - Each submission records your API key and the time as consent evidence on the `form.submitted` event; new contacts get `signup_source: 'api'` and any `attribution` as `signup_*` custom fields. When your server has the original signup request, pass its `ip` and `userAgent` in `consent`; never substitute the SDK host or an agent's request details.
 - Needs the `campaign:write` and `audience:write` scopes. An `Idempotency-Key` is required; the SDK sends one per call and reuses it across retries. Submissions are rate limited per API key (60 per minute) in addition to your account's limit.
+
+## Goals
+
+`migma.goals` turns a goal such as "sell out the winter collection by December 20" into a reviewed plan and then into drafts: segments, a signup form, a landing page, flows and campaign emails. Building never publishes, schedules, sends or turns anything on; each item goes live through its own API after a person reviews it.
+
+```typescript
+const { data: goal } = await migma.goals.plan({ projectId: 'brand-id', goal: 'Sell out the winter collection by December 20.' });
+// Poll get() until status is planned (or needs_input: answer() the questions).
+const { data: plan } = await migma.goals.get(goal!.id);
+// Show the plan, estimatedCredits, assumptions and missing facts. Only after the person approves it:
+await migma.goals.build(plan!.id, { expectedPlanHash: plan!.planHash! });
+```
+
+`plan`, `answer` and `build` run in the background; poll `get`, which also returns where each built item stands (`resources`) and what going live takes (`launch`). `update` and `answer` take the `planVersion` you read, and every plan change gives it a new `planHash`; a stale hash or version returns `409 GOAL_PLAN_CHANGED`. Never read a fresh `planHash` and build with it without showing that plan. `report` returns delivery, attributed revenue (last human email click within 5 days, by send date; not incremental lift), signups and approximate page counts, with `null` for unknown, never zero. Planning and building need the `campaign:write` and `email:write` scopes, and `audience:write` when the plan creates a segment. See [goals API](https://docs.migma.ai/goals-api).
+
+## Landing pages
+
+`migma.landingPages` manages campaign landing pages, served at `https://migma.app/p/<id>` (`hostedUrl`). `generate` writes an on-brand draft from a brief (one email credit); `create` saves a page you wrote. Both save drafts only.
+
+```typescript
+const { data: page } = await migma.landingPages.generate({
+  projectId: 'brand-id',
+  brief: 'A page for our winter sale: 15% off with code WINTER15 until December 20.',
+  links: [{ label: 'Shop the collection', url: 'https://example.com/winter' }],
+});
+const { data: detail } = await migma.landingPages.get(page!.id); // publishChecks, counters
+```
+
+Buttons must link to the brand's own domain: a verified custom sending domain (any address under its registrable domain) or the connected Shopify store; Migma addresses never count. Migma adds the logo, photos and fonts from the brand. `update` replaces the whole draft spec. `publish` needs every `publishChecks` entry to pass and counts toward the plan's live page limit; publish only when the person asks. Once published, a page never returns 404: when paused, deleted or past `endsAt`, visitors see its `ended` state. `versions` lists published versions and `metrics` returns approximate daily views and clicks. Write methods send an `Idempotency-Key`, reused across automatic retries. See [landing pages API](https://docs.migma.ai/landing-pages-api).

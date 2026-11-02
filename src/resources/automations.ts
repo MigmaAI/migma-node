@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { CallOptions, MigmaClient } from '../client';
-import type { Automation, AutomationCapabilities, AutomationEventTrigger, AutomationGeneration, AutomationGenerateParams, AutomationGraph, AutomationListPage, AutomationListParams, AutomationMetrics, AutomationReport, AutomationReportParams, AutomationRun, AutomationRunDetail, AutomationRuns, AutomationTriggerEvents, AutomationValidation } from '../types/automations';
+import type { Automation, AutomationCapabilities, AutomationEventTrigger, AutomationGeneration, AutomationGenerateParams, AutomationGraph, AutomationListPage, AutomationListParams, AutomationMetrics, AutomationReport, AutomationReportParams, AutomationRun, AutomationRunDetail, AutomationRuns, AutomationTriggerEvents, AutomationDryRun, AutomationValidation } from '../types/automations';
 
 /**
  * Conversational drafts and their execution state use the same API as chat.
@@ -60,6 +60,14 @@ export class Automations {
   /** Checks setup and prepares delivery drafts; never sends or turns on the flow. */
   validate(id: string, options?: CallOptions) {
     return this.client.post<AutomationValidation>(`/automations/${encodeURIComponent(id)}/validate`, undefined, this.keyed(options));
+  }
+
+  /**
+   * Runs one sample contact through the saved flow with no sends: an example
+   * path, not a setup check. Never sends, generates or changes anything.
+   */
+  simulate(id: string, options?: Pick<CallOptions, 'maxRetries'>) {
+    return this.client.post<AutomationDryRun>(`/automations/${encodeURIComponent(id)}/simulation`, undefined, options);
   }
 
   /** Call only after the user requests activation of this exact reviewed definition. */
