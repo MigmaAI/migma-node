@@ -39,12 +39,16 @@ export class Forms {
     return this.client.post<Form>(`/forms/${encodeURIComponent(id)}/publish`, undefined, this.keyed(options));
   }
 
-  /** Stops new submissions. Returns 409 FORM_USED_BY_AUTOMATION while an enabled automation starts from it. */
+  /**
+   * Stops new submissions to a live form; a draft returns 409 FORM_NOT_LIVE. Returns 409
+   * FORM_USED_BY_LANDING_PAGE while a live landing page shows the form and 409
+   * FORM_USED_BY_AUTOMATION while an enabled automation starts from it.
+   */
   pause(id: string, options?: CallOptions) {
     return this.client.post<Form>(`/forms/${encodeURIComponent(id)}/pause`, undefined, this.keyed(options));
   }
 
-  /** Past submissions and contacts remain. Blocked like pause() while an enabled automation uses the form. */
+  /** Past submissions and contacts remain. Blocked like pause() while a live landing page or an enabled automation uses the form. */
   delete(id: string, options?: CallOptions) {
     return this.client.delete<{ id: string; deleted: true }>(`/forms/${encodeURIComponent(id)}`, undefined, this.keyed(options));
   }
@@ -58,7 +62,7 @@ export class Forms {
     return this.client.post<FormSubmitResult>(`/forms/${encodeURIComponent(id)}/submissions`, { ...params }, this.keyed(options));
   }
 
-  /** Newest first. Needs the audience:read scope. */
+  /** Newest first. Needs the campaign:read and audience:read scopes. */
   submissions(id: string, params: { limit?: number; cursor?: string } = {}) {
     return this.client.get<FormSubmissions>(`/forms/${encodeURIComponent(id)}/submissions`, params);
   }

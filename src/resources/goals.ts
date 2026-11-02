@@ -50,7 +50,11 @@ export class Goals {
     return this.client.post<Goal>(`/goals/${encodeURIComponent(id)}/build`, { ...params }, this.keyed(options));
   }
 
-  /** Stops a build after the item in progress; built items stay as drafts. */
+  /**
+   * Stops a build after the item in progress (built items stay as drafts; the rest return
+   * to the plan), or stops planning (an earlier plan stays; a first plan fails). Returns
+   * 409 GOAL_NOT_BUILDING when nothing is planning or building.
+   */
   cancel(id: string, options?: CallOptions) {
     return this.client.post<Goal>(`/goals/${encodeURIComponent(id)}/cancel`, undefined, this.keyed(options));
   }
