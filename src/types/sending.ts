@@ -12,6 +12,7 @@ export interface SendEmailParams {
   replyTo?: string;
   bcc?: string[];
   subject: string;
+  /** Values print as typed: HTML or Markdown in a value shows as text. A value used as a link or image destination still takes a complete URL. */
   variables?: Record<string, unknown>;
   providerType?: ProviderType;
   /** Optional when emailId or conversationId can resolve project automatically. */
