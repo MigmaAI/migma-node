@@ -429,6 +429,8 @@ await migma.campaigns.schedule(campaign.id, {
   scheduledAt: '2026-07-01T15:00:00Z',
   scheduledTimezone: 'America/New_York',
   localTimeDelivery: true,
+  // Where 11:00 has already passed, send right away ('now', the default) or the next day ('next_day')
+  localTimePassed: 'next_day',
 });
 
 // Aggregated engagement metrics (cached, may be slightly stale)

@@ -1,5 +1,8 @@
 export type CampaignStatus = 'draft' | 'pending_review' | 'scheduled' | 'sending' | 'throttled' | 'ab_testing' | 'sent' | 'failed' | 'cancelled';
 
+/** `now` sends right away; `next_day` sends at the same time the next day. */
+export type LocalTimePassed = 'now' | 'next_day';
+
 export interface Campaign {
   id: string;
   projectId: string;
@@ -24,6 +27,8 @@ export interface Campaign {
   scheduledTimezone?: string | null;
   /** True when the scheduled clock time is used in each contact's own time zone. */
   localTimeDelivery?: boolean;
+  /** With local-time delivery: what happens where the scheduled time had already passed when the plan was made. */
+  localTimePassed?: LocalTimePassed;
   batchId?: string | null;
   sentAt?: string | null;
   completedAt?: string | null;
@@ -73,11 +78,16 @@ export interface ScheduleCampaignParams {
   scheduledTimezone?: string;
   /**
    * Send at the clock time of `scheduledAt` in `scheduledTimezone`, in each contact's own time zone (by country).
-   * Requires `scheduledTimezone`. Contacts without a country get it at `scheduledAt`; where that time has passed,
-   * the same time the next day. Not available with A/B tests or batch sending. Omit to keep the campaign's current
-   * setting; `false` turns it off.
+   * Requires `scheduledTimezone`. Contacts without a country get it at `scheduledAt`. Not available with A/B tests
+   * or batch sending. Omit to keep the campaign's current setting; `false` turns it off.
    */
   localTimeDelivery?: boolean;
+  /**
+   * Only used with `localTimeDelivery`. Where the scheduled time has already passed in a contact's time zone when the
+   * plan is made: `now` sends to them right away, `next_day` sends at the same time the next day. Default `now`.
+   * Omit to keep the campaign's saved choice.
+   */
+  localTimePassed?: LocalTimePassed;
 }
 
 /**
