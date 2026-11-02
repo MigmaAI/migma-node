@@ -16,7 +16,12 @@ export interface SegmentActivityFilter {
   amount?: number;
   from?: string | Date;
   to?: string | Date;
+  /** Limit opened or clicked to one campaign. Not on sent, and not with minCount or maxCount. */
   campaignId?: string;
+  /** Mode within only, a period of at most 90 days: at least this many emails (1 to 10,000). */
+  minCount?: number;
+  /** Mode within only, a period of at most 90 days: at most this many emails (0 to 10,000). Contacts with none match too. */
+  maxCount?: number;
 }
 
 export interface SegmentFilters {
