@@ -116,6 +116,7 @@ const migma = new Migma('mgma_sk_live_...', {
   baseUrl: 'https://api.migma.ai/v1', // default
   maxRetries: 2,                           // retries on 5xx/429
   retryDelay: 1000,                        // base delay between retries
+  agentId: 'ai:claude-code',               // the AI agent behind these calls (default: MIGMA_AGENT_ID, then detected)
 });
 ```
 
