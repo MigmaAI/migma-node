@@ -45,8 +45,17 @@ describe('X-Agent-Id', () => {
     expect(await sentAgentId()).toBe('ai:from-env');
   });
 
-  it('keeps two clients in one process apart', async () => {
-    expect(await sentAgentId('ai:cursor')).toBe('ai:cursor');
-    expect(await sentAgentId('ai:codex')).toBe('ai:codex');
+  it('keeps live clients in one process apart', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => Response.json({ success: true, data: { domains: [] } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const clientFor = (agentId: string) => new Migma('mgm_test', { baseUrl: 'https://api.test.local/v1', maxRetries: 0, agentId });
+    const cursor = clientFor('ai:cursor');
+    const codex = clientFor('ai:codex');
+
+    await cursor.domains.list();
+    await codex.domains.list();
+    await cursor.domains.list();
+
+    expect(fetchMock.mock.calls.map(([, init]) => init.headers['X-Agent-Id'])).toEqual(['ai:cursor', 'ai:codex', 'ai:cursor']);
   });
 });
