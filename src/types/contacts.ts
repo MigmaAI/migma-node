@@ -145,7 +145,63 @@ export interface ContactExportStatus {
   error?: string;
 }
 
+/** Maps contact fields to CSV header names. Only email is required. */
+export interface ContactImportColumnMap {
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  phone?: string;
+  country?: string;
+  language?: string;
+  /** Custom field key to CSV header name. */
+  customFields?: Record<string, string>;
+}
+
+export interface CreateContactImportParams {
+  /** CSV contents, up to 200MB: a Buffer, Uint8Array, Blob or File. */
+  file: Blob | Uint8Array;
+  /** Name shown for the import. Defaults to the File's name, then contacts.csv. */
+  fileName?: string;
+  projectId: string;
+  columnMap: ContactImportColumnMap;
+  /** Rows whose email already exists: upsert updates them (default), skip leaves them untouched. */
+  onConflict?: 'upsert' | 'skip';
+  /** CSV field delimiter. Default comma. */
+  delimiter?: string;
+  /** Tag names or existing tag IDs for every imported contact. Unknown names create tags. */
+  tags?: string[];
+}
+
+export interface ContactImportStarted {
+  object: 'contact_import';
+  id: string;
+  status: 'processing';
+}
+
 export type ContactImportProvider = 'klaviyo' | 'mailchimp' | 'hubspot';
+
+/** A CSV or provider import. Provider, tag and segment fields are null for CSV imports. */
+export interface ContactImportStatus {
+  object: 'contact_import';
+  id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  provider: ContactImportProvider | null;
+  tag_id: string | null;
+  segment_id: string | null;
+  counts: {
+    total: number;
+    created: number;
+    updated: number;
+    skipped: number;
+    failed: number;
+    /** Imported contacts who are not subscribed and cannot receive campaigns. */
+    non_sendable: number;
+  };
+  error: string | null;
+  created_at: string;
+  completed_at: string | null;
+}
 
 /** A list or segment in the connected provider account that can be imported. */
 export interface ProviderImportSource {
@@ -172,7 +228,7 @@ export interface ImportFromProviderParams {
   connectionId?: string;
 }
 
-/** Each import becomes a tag and a segment named after its sources. Poll the import with its id. */
+/** Each import becomes a tag and a segment named after its sources. Poll getImport with its id. */
 export interface ProviderImportStarted {
   object: 'contact_import';
   id: string;
