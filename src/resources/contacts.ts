@@ -14,6 +14,9 @@ import type {
   ChangeStatusParams,
   CreateContactExportParams,
   ContactExportStatus,
+  CreateContactImportParams,
+  ContactImportStarted,
+  ContactImportStatus,
   ListProviderImportSourcesParams,
   ProviderImportSource,
   ImportFromProviderParams,
@@ -73,13 +76,38 @@ export class Contacts {
     return this.client.get<ContactExportStatus>(`/contacts/exports/${encodeURIComponent(jobId)}`, { projectId });
   }
 
+  /**
+   * Upload a CSV to import in the background. Poll getImport for status and counts.
+   * Never retried automatically: the endpoint has no idempotency key, so a repeat creates a second import.
+   */
+  async createImport(params: CreateContactImportParams): Promise<MigmaResult<ContactImportStarted>> {
+    const { file, fileName, projectId, columnMap, onConflict, delimiter, tags } = params;
+    const form = new FormData();
+    form.append(
+      'file',
+      file instanceof Blob ? file : new Blob([file as Uint8Array<ArrayBuffer>], { type: 'text/csv' }),
+      fileName ?? (file as { name?: string }).name ?? 'contacts.csv'
+    );
+    form.append('projectId', projectId);
+    form.append('columnMap', JSON.stringify(columnMap));
+    if (onConflict) form.append('onConflict', onConflict);
+    if (delimiter) form.append('delimiter', delimiter);
+    if (tags?.length) form.append('tags', JSON.stringify(tags));
+    return this.client.postForm<ContactImportStarted>('/contacts/imports', form, { maxRetries: 0 });
+  }
+
+  /** Status and counts of a CSV or provider import. */
+  async getImport(id: string): Promise<MigmaResult<ContactImportStatus>> {
+    return this.client.get<ContactImportStatus>(`/contacts/imports/${encodeURIComponent(id)}`);
+  }
+
   /** Lists and segments in the brand's connected Klaviyo, Mailchimp or HubSpot account. A 409 error message includes the link to connect it. */
   async listProviderImportSources(params: ListProviderImportSourcesParams): Promise<MigmaResult<{ sources: ProviderImportSource[] }>> {
     const { provider, projectId, connectionId } = params;
     return this.client.get<{ sources: ProviderImportSource[] }>(`/contacts/imports/providers/${encodeURIComponent(provider)}/sources`, { projectId, connectionId });
   }
 
-  /** Import provider sources as contacts (subscribed only by default). Poll GET /contacts/imports/{id} for counts. */
+  /** Import provider sources as contacts (subscribed only by default). Poll getImport for counts. */
   async importFromProvider(params: ImportFromProviderParams, options?: CallOptions): Promise<MigmaResult<ProviderImportStarted>> {
     return this.client.post<ProviderImportStarted>('/contacts/imports/provider', params as unknown as Record<string, unknown>, { ...options, maxRetries: options?.idempotencyKey ? options.maxRetries : 0 });
   }
