@@ -578,7 +578,7 @@ const { data: devices } = await migma.previews.getSupportedDevices();
 
 ### Export
 
-Export generated emails to HTML, PNG, PDF, or directly to ESP platforms.
+Export generated emails to HTML, PNG, PDF, or directly to ESP platforms. Exports need a paid plan: on a free plan these methods return a `403` error with `code: 'forbidden'`.
 
 ```typescript
 const { data: html } = await migma.export.html('conversation_id');
