@@ -1,3 +1,4 @@
+import { File } from 'node:buffer';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Migma } from '../../src';
 
