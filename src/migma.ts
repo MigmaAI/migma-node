@@ -31,6 +31,12 @@ export interface MigmaConfig {
   maxRetries?: number;
   /** Base delay between retries in ms. Default: 1000 */
   retryDelay?: number;
+  /**
+   * Names the AI agent behind these calls, sent as `X-Agent-Id`: `ai:<slug>`,
+   * such as `ai:claude-code`. For one process serving several agents. Default:
+   * `MIGMA_AGENT_ID`, then the detected host.
+   */
+  agentId?: string;
 }
 
 export class Migma {
@@ -72,6 +78,7 @@ export class Migma {
       baseUrl: config?.baseUrl ?? 'https://api.migma.ai/v1',
       maxRetries: config?.maxRetries ?? 2,
       retryDelay: config?.retryDelay ?? 1000,
+      agentId: config?.agentId,
     });
 
     this.contacts = new Contacts(this.client);

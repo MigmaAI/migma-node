@@ -116,6 +116,7 @@ const migma = new Migma('mgma_sk_live_...', {
   baseUrl: 'https://api.migma.ai/v1', // default
   maxRetries: 2,                           // retries on 5xx/429
   retryDelay: 1000,                        // base delay between retries
+  agentId: 'ai:claude-code',               // the AI agent behind these calls (default: MIGMA_AGENT_ID, then detected)
 });
 ```
 
@@ -833,7 +834,10 @@ const { data: form } = await migma.forms.create({
   spec: {
     kind: 'subscribe',
     steps: [{ id: 'signup', headline: 'Join the list', ctaLabel: 'Subscribe',
-      fields: [{ key: 'email', label: 'Email', type: 'email', required: true }] }],
+      fields: [
+        { key: 'email', label: 'Email', type: 'email', required: true },
+        { key: 'firstName', label: 'First name', type: 'text', required: false, bindsTo: 'firstName' },
+      ] }],
     confirmation: { mode: 'message', value: 'Thanks for joining!' },
     styleTokens: {},
   },
@@ -851,7 +855,7 @@ If you collect signups in your own UI, submit them from your server with `submit
 ```typescript
 const { data } = await migma.forms.submit(form!.id, {
   email: 'ada@example.com',
-  fields: { firstName: 'Ada', consent: true },
+  fields: { firstName: 'Ada' },
   attribution: { utmSource: 'launch', referrer: 'https://example.com/pricing' },
   consent: { ip: request.ip, userAgent: request.headers['user-agent'] },
 });

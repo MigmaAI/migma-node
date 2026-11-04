@@ -6,6 +6,7 @@ export interface ClientConfig {
   baseUrl: string;
   maxRetries: number;
   retryDelay: number;
+  agentId?: string;
 }
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
@@ -51,7 +52,7 @@ export class MigmaClient {
       'Content-Type': 'application/json',
       'User-Agent': 'migma-node/1.0.0',
     };
-    const agentId = detectAgentId();
+    const agentId = detectAgentId(config.agentId);
     if (agentId) {
       this.headers['X-Agent-Id'] = agentId;
     }
