@@ -17,7 +17,12 @@ import { KnowledgeBase } from './resources/knowledge-base';
 import { Images } from './resources/images';
 import { Campaigns } from './resources/campaigns';
 import { Metrics } from './resources/metrics';
+import { Automations } from './resources/automations';
 import { Workspaces } from './resources/workspaces';
+import { Websites } from './resources/websites';
+import { Forms } from './resources/forms';
+import { Goals } from './resources/goals';
+import { LandingPages } from './resources/landing-pages';
 
 export interface MigmaConfig {
   /** API base URL. Default: 'https://api.migma.ai/v1' */
@@ -55,7 +60,12 @@ export class Migma {
   readonly images: Images;
   readonly campaigns: Campaigns;
   readonly metrics: Metrics;
+  readonly automations: Automations;
   readonly workspaces: Workspaces;
+  readonly websites: Websites;
+  readonly forms: Forms;
+  readonly goals: Goals;
+  readonly landingPages: LandingPages;
 
   constructor(apiKey: string, config?: MigmaConfig) {
     if (!apiKey) {
@@ -89,6 +99,11 @@ export class Migma {
     this.images = new Images(this.client);
     this.campaigns = new Campaigns(this.client);
     this.metrics = new Metrics(this.client);
+    this.automations = new Automations(this.client);
     this.workspaces = new Workspaces(this.client);
+    this.websites = new Websites(this.client);
+    this.forms = new Forms(this.client);
+    this.goals = new Goals(this.client);
+    this.landingPages = new LandingPages(this.client);
   }
 }

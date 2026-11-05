@@ -20,14 +20,20 @@ interface RequestOptions {
   maxRetries?: number;
 }
 
-/** Per-call options for write methods (POST/PATCH/DELETE). */
+function errorData(value: unknown): Record<string, unknown> | undefined {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+/** Per-call options for write methods (POST/PUT/PATCH/DELETE). */
 export interface CallOptions {
   /** Override automatic retries for this call. Use 0 for unsafe writes. */
   maxRetries?: number;
   /**
-   * Optional Idempotency-Key (max 100 chars). Same key + same body within 24h
-   * replays the original response; a different body returns 409 IDEMPOTENCY_CONFLICT.
-   * Reused across the SDK's own automatic retries so a retried call never duplicates.
+   * Optional Idempotency-Key (max 100 chars). The same key, operation and body
+   * within 24h replay the original response; another operation or body returns
+   * 409 IDEMPOTENCY_CONFLICT. Reused across this call's automatic retries.
    */
   idempotencyKey?: string;
 }
@@ -68,7 +74,13 @@ export class MigmaClient {
         const json = await readJson<T>(response);
 
         if (!response.ok || !json?.success) {
-          const error = new MigmaError(failureMessage(response, json), response.status);
+          const error = new MigmaError(
+            failureMessage(response, json),
+            response.status,
+            undefined,
+            json?.code,
+            errorData(json?.data)
+          );
 
           if (response.status >= 500 || response.status === 429) {
             lastError = error;
@@ -125,7 +137,13 @@ export class MigmaClient {
       if (!response.ok || !json?.success) {
         return {
           data: null,
-          error: new MigmaError(failureMessage(response, json), response.status),
+          error: new MigmaError(
+            failureMessage(response, json),
+            response.status,
+            undefined,
+            json?.code,
+            errorData(json?.data)
+          ),
         };
       }
 
@@ -171,8 +189,8 @@ export class MigmaClient {
     return this.request<T>({ method: 'PATCH', path, body, headers: this.callHeaders(options), maxRetries: options?.maxRetries });
   }
 
-  async put<T>(path: string, body?: Record<string, unknown>) {
-    return this.request<T>({ method: 'PUT', path, body });
+  async put<T>(path: string, body?: Record<string, unknown>, options?: CallOptions) {
+    return this.request<T>({ method: 'PUT', path, body, headers: this.callHeaders(options), maxRetries: options?.maxRetries });
   }
 
   async delete<T>(

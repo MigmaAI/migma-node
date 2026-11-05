@@ -813,3 +813,85 @@ console.log('Download:', data.files[0].url);
 ## License
 
 MIT
+
+
+## Automations
+
+`migma.automations` creates an off draft from a plain-language brief or workflow screenshots, checks its setup, and manages its status and contact journeys. Generation is asynchronous; keep the returned `jobId` and poll `generationStatus`. Creation does not activate delivery. After `get(id)` and review, use the returned `definitionHash` to call `activate(id, { confirmed: true, expectedDefinitionHash })` only for an explicit user activation request. Pass the same reviewed hash to `updateTrigger` and `updateWait`; if the API returns `AUTOMATION_GRAPH_CHANGED`, reload and review before retrying. List summaries omit `definitionHash`, and imported migration drafts can omit it until they become a native reviewed flow; do not activate or edit through these methods without an observed hash.
+
+Use `generate`, `generationStatus`, `list`, `get`, `graph`, `capabilities`, `triggerEvents`, `validate`, `simulate`, `activate`, `pause`, `updateTrigger`, `updateWait`, `runs`, `getRun`, `metrics`, and `report`. `list(projectId, { cursor, limit, includeArchived })` returns `nextCursor` for the next page and omits archived flows unless requested. Automation metrics are a view over the same campaign reports; preserve reporting status and do not count both copies of the same campaign. `report(id, { startDate, endDate, timezone })` returns the canvas send-date report for a period.
+
+Write methods send an `Idempotency-Key` and reuse it across automatic retries, so a retried edit replays its first result instead of returning `AUTOMATION_GRAPH_CHANGED` for its own change. Pass `{ idempotencyKey }` to retry an uncertain call later. `runs` and `getRun` return the same run shape as the Migma dashboard, including `failureReason`, `exitReason` and `suppressionReason`; contact email and name need the `audience:read` scope. `getRun` returns the latest 25 steps by default (`historyLimit` up to 100). Entry rules, other flow settings and run cancellation are only available in Migma. See [automation tools and API](https://docs.migma.ai/automations/chat-and-api).
+
+## Forms
+
+`migma.forms` manages signup forms. Visitors submit through the hosted page (`hostedUrl`) or the embed code (`embed.inline` or `embed.popup`), and submissions emit `form.submitted` and `form.confirmed`, which automations can use as triggers with the form's `id` as `formId`.
+
+```typescript
+const { data: form } = await migma.forms.create({
+  projectId: 'brand-id',
+  spec: {
+    kind: 'subscribe',
+    steps: [{ id: 'signup', headline: 'Join the list', ctaLabel: 'Subscribe',
+      fields: [
+        { key: 'email', label: 'Email', type: 'email', required: true },
+        { key: 'firstName', label: 'First name', type: 'text', required: false, bindsTo: 'firstName' },
+      ] }],
+    confirmation: { mode: 'message', value: 'Thanks for joining!' },
+    styleTokens: {},
+  },
+  tagIds: ['tag-id'],
+});
+await migma.forms.publish(form!.id);
+```
+
+`create` and `update` change the draft only; `publish` makes it live, within your plan's live form limit. A double opt-in form needs a verified transactional sender before it can be published. `pause` and `delete` return `409 FORM_USED_BY_LANDING_PAGE` while a live landing page shows the form (pause those pages first) and `409 FORM_USED_BY_AUTOMATION` while an enabled automation starts from it (pause that automation or change its trigger first); pausing a draft returns `409 FORM_NOT_LIVE`. `get` includes view, submission and confirmation counters (`null` when reporting is unavailable) and the automations that use the form. `submissions` needs the `campaign:read` and `audience:read` scopes. Write methods send an `Idempotency-Key`, reused across automatic retries.
+
+### Submitting from your own form
+
+If you collect signups in your own UI, submit them from your server with `submit`. It runs the live form's own rules: its fields, tags, attribution and double opt-in, and the same `form.submitted` and `form.confirmed` events.
+
+```typescript
+const { data } = await migma.forms.submit(form!.id, {
+  email: 'ada@example.com',
+  fields: { firstName: 'Ada' },
+  attribution: { utmSource: 'launch', referrer: 'https://example.com/pricing' },
+  consent: { ip: request.ip, userAgent: request.headers['user-agent'] },
+});
+// data.state: 'received' | 'confirmation_pending'
+```
+
+- Only a live form accepts submissions (`409 FORM_NOT_LIVE` otherwise). Field keys must match the form; unknown keys are rejected.
+- It only adds: a new contact is subscribed (or, with double opt-in, emailed a confirmation link), tags are added and submitted fields saved. An existing contact keeps its status, including unsubscribed and bounced contacts, and the result is the same either way. To subscribe someone who is already a contact but not subscribed, use a double opt-in form so they confirm themselves.
+- The API answers `201` for a new submission, `200` with `duplicate: true` when the same API key already submitted that email to that form (`submissionId` is a hash of the three), and `202` with `state: 'confirmation_pending'` for double opt-in.
+- Each submission records your API key and the time as consent evidence on the `form.submitted` event; new contacts get `signup_source: 'api'` and any `attribution` as `signup_*` custom fields. When your server has the original signup request, pass its `ip` and `userAgent` in `consent`; never substitute the SDK host or an agent's request details.
+- Needs the `campaign:write` and `audience:write` scopes. An `Idempotency-Key` is required; the SDK sends one per call and reuses it across retries. Submissions are rate limited per API key (60 per minute) in addition to your account's limit.
+
+## Goals
+
+`migma.goals` turns a goal such as "sell out the winter collection by December 20" into a reviewed plan and then into drafts: segments, a signup form, a landing page, flows and campaign emails. Building never publishes, schedules, sends or turns anything on; each item goes live through its own API after a person reviews it.
+
+```typescript
+const { data: goal } = await migma.goals.plan({ projectId: 'brand-id', goal: 'Sell out the winter collection by December 20.' });
+// Poll get() until status is planned (or needs_input: answer() the questions).
+const { data: plan } = await migma.goals.get(goal!.id);
+// Show the plan, estimatedCredits, assumptions and missing facts. Only after the person approves it:
+await migma.goals.build(plan!.id, { expectedPlanHash: plan!.planHash! });
+```
+
+`plan`, `answer` and `build` run in the background; poll `get`, which also returns where each built item stands (`resources`) and what going live takes (`launch`). `update` and `answer` take the `planVersion` you read, and every plan change gives it a new `planHash`; a stale hash or version returns `409 GOAL_PLAN_CHANGED`. Never read a fresh `planHash` and build with it without showing that plan. `report` returns delivery, attributed revenue (last human email click within 5 days, by send date; not incremental lift), signups and approximate page counts, with `null` for unknown, never zero. Planning and building need the `campaign:write` and `email:write` scopes, and `audience:write` when the plan creates a segment. See [goals API](https://docs.migma.ai/goals-api).
+
+## Landing pages
+
+`migma.landingPages` manages campaign landing pages, served at `https://migma.app/p/<id>` (`hostedUrl`). `generate` writes an on-brand draft from a brief (one email credit); `create` saves a page you wrote. Both save drafts only.
+
+```typescript
+const { data: page } = await migma.landingPages.generate({
+  projectId: 'brand-id',
+  brief: 'A page for our winter sale: 15% off with code WINTER15 until December 20.',
+  links: [{ label: 'Shop the collection', url: 'https://example.com/winter' }],
+});
+const { data: detail } = await migma.landingPages.get(page!.id); // publishChecks, counters
+```
+
+Buttons must link to the brand's own domain: a verified custom sending domain (any address under its registrable domain) or the connected Shopify store; Migma addresses never count. Migma adds the logo, photos and fonts from the brand. `update` replaces the whole draft spec. `publish` needs every `publishChecks` entry to pass and counts toward the plan's live page limit; publish only when the person asks. Once published, a page never returns 404: when paused, deleted or past `endsAt`, visitors see its `ended` state. `versions` lists published versions and `metrics` returns approximate daily views and clicks. Write methods send an `Idempotency-Key`, reused across automatic retries. See [landing pages API](https://docs.migma.ai/landing-pages-api).
