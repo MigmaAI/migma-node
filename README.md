@@ -229,10 +229,10 @@ const { data: deletion } = await migma.contacts.bulkDeleteByEmail({
 });
 
 // Import contacts from a CSV file (multipart upload, processed in the background).
-// `file` accepts a Blob/File, a Buffer, or a ReadableStream.
+// `file` accepts a Buffer, Uint8Array, Blob or File. Requires 1.13.0 or later.
 import { readFileSync } from 'node:fs';
 
-const { data: job } = await migma.contacts.imports.create({
+const { data: job } = await migma.contacts.createImport({
   file: readFileSync('./contacts.csv'),
   projectId: 'proj_abc123',
   columnMap: {
@@ -244,10 +244,10 @@ const { data: job } = await migma.contacts.imports.create({
   tags: ['newsletter'],
 });
 
-// Poll for status + counts until the import finishes.
-const { data: status } = await migma.contacts.imports.get(job!.id);
+// Check status and counts. Repeat until the status is completed or failed.
+const { data: status } = await migma.contacts.getImport(job!.id);
 // status.status → 'pending' | 'processing' | 'completed' | 'failed'
-// status.counts → { total, created, updated, skipped, failed }
+// status.counts → { total, created, updated, skipped, failed, non_sendable }
 
 // Safe retries: pass an Idempotency-Key so a retried write never duplicates.
 // Same key + same body within 24h replays the original response.
@@ -578,7 +578,7 @@ const { data: devices } = await migma.previews.getSupportedDevices();
 
 ### Export
 
-Export generated emails to HTML, PNG, PDF, or directly to ESP platforms.
+Export generated emails to HTML, PNG, PDF, or directly to ESP platforms. Exports need a paid plan: on a free plan these methods return a `403` error with `code: 'forbidden'`.
 
 ```typescript
 const { data: html } = await migma.export.html('conversation_id');
@@ -699,8 +699,7 @@ await migma.images.updateLogos('proj_abc123', {
 
 | Resource | Methods | Docs |
 |----------|---------|------|
-| `migma.contacts` | `create` `list` `get` `update` `remove` `bulkImport` `getBulkImportStatus` `changeStatus` | [Contacts](https://docs.migma.ai/api-reference/contacts/get-contact) |
-| `migma.contacts.imports` | `create` `get` | [Contact imports](https://docs.migma.ai/api-reference/contacts/get-contact) |
+| `migma.contacts` | `create` `list` `get` `update` `remove` `bulkImport` `getBulkImportStatus` `createImport` `getImport` `changeStatus` | [Contacts](https://docs.migma.ai/api-reference/contacts/get-contact) |
 | `migma.tags` | `create` `list` `get` `update` `remove` | [Tags](https://docs.migma.ai/api-reference/tags/list-tags) |
 | `migma.segments` | `create` `list` `get` `update` `remove` | [Segments](https://docs.migma.ai/api-reference/audiences/list-audiences) |
 | `migma.topics` | `create` `list` `get` `update` `remove` `subscribe` `unsubscribe` | [Topics](https://docs.migma.ai/api-reference/topics/list-topics) |
