@@ -1,10 +1,13 @@
-import type { MigmaClient } from '../client';
+import { randomUUID } from 'node:crypto';
+import type { CallOptions, MigmaClient } from '../client';
 import type { MigmaResult } from '../types/common';
 import type {
   ExportResult,
   ExportFormatsResponse,
   ExportStatusResponse,
   HubspotExportParams,
+  KlaviyoPushParams,
+  KlaviyoPushResult,
 } from '../types/export';
 
 export class Export {
@@ -39,6 +42,25 @@ export class Export {
     return this.client.get<ExportResult>(
       `/export/klaviyo/${conversationId}`,
       { klaviyoType }
+    );
+  }
+
+  /**
+   * Create an HTML template in the brand's connected Klaviyo account, with the
+   * email's images hosted in Klaviyo. Pass the same `idempotencyKey` when retrying
+   * so a retry returns the first template instead of creating another. No automatic
+   * retries by default: a server error is not replayed, and Klaviyo may already hold the
+   * template, so check it before retrying.
+   */
+  async pushToKlaviyo(
+    conversationId: string,
+    params: KlaviyoPushParams = {},
+    options?: CallOptions
+  ): Promise<MigmaResult<KlaviyoPushResult>> {
+    return this.client.post<KlaviyoPushResult>(
+      `/export/klaviyo/${encodeURIComponent(conversationId)}/push`,
+      params as unknown as Record<string, unknown>,
+      { maxRetries: 0, ...options, idempotencyKey: options?.idempotencyKey || randomUUID() }
     );
   }
 

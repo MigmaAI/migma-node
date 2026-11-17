@@ -116,6 +116,7 @@ const migma = new Migma('mgma_sk_live_...', {
   baseUrl: 'https://api.migma.ai/v1', // default
   maxRetries: 2,                           // retries on 5xx/429
   retryDelay: 1000,                        // base delay between retries
+  agentId: 'ai:claude-code',               // the AI agent behind these calls (default: MIGMA_AGENT_ID, then detected)
 });
 ```
 
@@ -228,10 +229,10 @@ const { data: deletion } = await migma.contacts.bulkDeleteByEmail({
 });
 
 // Import contacts from a CSV file (multipart upload, processed in the background).
-// `file` accepts a Blob/File, a Buffer, or a ReadableStream.
+// `file` accepts a Buffer, Uint8Array, Blob or File. Requires 1.13.0 or later.
 import { readFileSync } from 'node:fs';
 
-const { data: job } = await migma.contacts.imports.create({
+const { data: job } = await migma.contacts.createImport({
   file: readFileSync('./contacts.csv'),
   projectId: 'proj_abc123',
   columnMap: {
@@ -243,10 +244,10 @@ const { data: job } = await migma.contacts.imports.create({
   tags: ['newsletter'],
 });
 
-// Poll for status + counts until the import finishes.
-const { data: status } = await migma.contacts.imports.get(job!.id);
+// Check status and counts. Repeat until the status is completed or failed.
+const { data: status } = await migma.contacts.getImport(job!.id);
 // status.status → 'pending' | 'processing' | 'completed' | 'failed'
-// status.counts → { total, created, updated, skipped, failed }
+// status.counts → { total, created, updated, skipped, failed, non_sendable }
 
 // Safe retries: pass an Idempotency-Key so a retried write never duplicates.
 // Same key + same body within 24h replays the original response.
@@ -577,7 +578,7 @@ const { data: devices } = await migma.previews.getSupportedDevices();
 
 ### Export
 
-Export generated emails to HTML, PNG, PDF, or directly to ESP platforms.
+Export generated emails to HTML, PNG, PDF, or directly to ESP platforms. Exports need a paid plan: on a free plan these methods return a `403` error with `code: 'forbidden'`.
 
 ```typescript
 const { data: html } = await migma.export.html('conversation_id');
@@ -585,6 +586,15 @@ const { data: png } = await migma.export.png('conversation_id');
 const { data: pdf } = await migma.export.pdf('conversation_id');
 const { data: klaviyo } = await migma.export.klaviyo('conversation_id', 'hybrid');
 const { data: mailchimp } = await migma.export.mailchimp('conversation_id');
+
+// Create the template in the brand's connected Klaviyo account, images hosted in Klaviyo.
+// Reuse the idempotency key when retrying, so a retry returns the same template.
+const { data: template } = await migma.export.pushToKlaviyo(
+  'conversation_id',
+  { name: 'Spring sale' },
+  { idempotencyKey: 'push-spring-sale-1' },
+);
+console.log(template.editorUrl, template.images.kept);
 ```
 
 [Export API Reference](https://docs.migma.ai/api-reference/export/list-export-formats)
@@ -698,8 +708,7 @@ await migma.images.updateLogos('proj_abc123', {
 
 | Resource | Methods | Docs |
 |----------|---------|------|
-| `migma.contacts` | `create` `list` `get` `update` `remove` `bulkImport` `getBulkImportStatus` `changeStatus` | [Contacts](https://docs.migma.ai/api-reference/contacts/get-contact) |
-| `migma.contacts.imports` | `create` `get` | [Contact imports](https://docs.migma.ai/api-reference/contacts/get-contact) |
+| `migma.contacts` | `create` `list` `get` `update` `remove` `bulkImport` `getBulkImportStatus` `createImport` `getImport` `changeStatus` | [Contacts](https://docs.migma.ai/api-reference/contacts/get-contact) |
 | `migma.tags` | `create` `list` `get` `update` `remove` | [Tags](https://docs.migma.ai/api-reference/tags/list-tags) |
 | `migma.segments` | `create` `list` `get` `update` `remove` | [Segments](https://docs.migma.ai/api-reference/audiences/list-audiences) |
 | `migma.topics` | `create` `list` `get` `update` `remove` `subscribe` `unsubscribe` | [Topics](https://docs.migma.ai/api-reference/topics/list-topics) |
@@ -710,7 +719,7 @@ await migma.images.updateLogos('proj_abc123', {
 | `migma.campaigns` | `list` `create` `get` `send` `schedule` `cancel` `stats` `logs` `archive` `unarchive` | [Campaigns](https://docs.migma.ai/campaigns/overview) |
 | `migma.validation` | `all` `compatibility` `links` `spelling` `deliverability` | [Validation](https://docs.migma.ai/api-reference/email-validation/run-all-validation-checks) |
 | `migma.previews` | `create` `get` `getStatus` `getDevice` `getSupportedDevices` `createAndWait` | [Previews](https://docs.migma.ai/api-reference/email-previews/create-email-preview) |
-| `migma.export` | `getFormats` `getStatus` `html` `pdf` `png` `klaviyo` `mailchimp` `hubspot` | [Export](https://docs.migma.ai/api-reference/export/list-export-formats) |
+| `migma.export` | `getFormats` `getStatus` `html` `pdf` `png` `klaviyo` `pushToKlaviyo` `mailchimp` `hubspot` | [Export](https://docs.migma.ai/api-reference/export/list-export-formats) |
 | `migma.domains` | `create` `list` `get` `verify` `update` `remove` `checkAvailability` `listManaged` `createManaged` `removeManaged` `provisionStream` `setup` | [Domains](https://docs.migma.ai/api-reference/domains/list-domains) |
 | `migma.webhooks` | `create` `list` `get` `update` `remove` `test` `getDeliveries` `getEvents` `getStats` | [Webhooks](https://docs.migma.ai/webhooks) |
 | `migma.knowledgeBase` | `list` `add` `update` `remove` | [API Ref](https://docs.migma.ai/api-reference/introduction) |
@@ -794,6 +803,10 @@ if (failed.length) throw new Error(`Broken on: ${failed.map((d) => d.deviceName)
 ```typescript
 const { data } = await migma.export.klaviyo(conversationId, 'hybrid');
 console.log('Download:', data.files[0].url);
+
+// Or straight into the brand's connected Klaviyo account
+const { data: template } = await migma.export.pushToKlaviyo(conversationId);
+console.log('Edit in Klaviyo:', template.editorUrl);
 ```
 
 ---

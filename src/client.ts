@@ -6,6 +6,7 @@ export interface ClientConfig {
   baseUrl: string;
   maxRetries: number;
   retryDelay: number;
+  agentId?: string;
 }
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
@@ -13,7 +14,7 @@ type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 interface RequestOptions {
   method: HttpMethod;
   path: string;
-  body?: Record<string, unknown>;
+  body?: Record<string, unknown> | FormData;
   query?: Record<string, string | number | boolean | undefined>;
   headers?: Record<string, string>;
   maxRetries?: number;
@@ -45,7 +46,7 @@ export class MigmaClient {
       'Content-Type': 'application/json',
       'User-Agent': 'migma-node/1.0.0',
     };
-    const agentId = detectAgentId();
+    const agentId = detectAgentId(config.agentId);
     if (agentId) {
       this.headers['X-Agent-Id'] = agentId;
     }
@@ -61,8 +62,7 @@ export class MigmaClient {
       try {
         const response = await fetch(url, {
           method: options.method,
-          headers: { ...this.headers, ...options.headers },
-          body: options.body ? JSON.stringify(options.body) : undefined,
+          ...this.encode(options),
         });
 
         const json = await readJson<T>(response);
@@ -163,6 +163,10 @@ export class MigmaClient {
     return this.request<T>({ method: 'POST', path, body, headers: this.callHeaders(options), maxRetries: options?.maxRetries });
   }
 
+  async postForm<T>(path: string, body: FormData, options?: CallOptions) {
+    return this.request<T>({ method: 'POST', path, body, headers: this.callHeaders(options), maxRetries: options?.maxRetries });
+  }
+
   async patch<T>(path: string, body?: Record<string, unknown>, options?: CallOptions) {
     return this.request<T>({ method: 'PATCH', path, body, headers: this.callHeaders(options), maxRetries: options?.maxRetries });
   }
@@ -177,6 +181,16 @@ export class MigmaClient {
     options?: CallOptions
   ) {
     return this.request<T>({ method: 'DELETE', path, query, headers: this.callHeaders(options), maxRetries: options?.maxRetries });
+  }
+
+  /** JSON by default. A form body drops the JSON header so fetch sets the multipart one with its boundary. */
+  private encode(options: RequestOptions): Pick<RequestInit, 'headers' | 'body'> {
+    const headers: Record<string, string> = { ...this.headers, ...options.headers };
+    if (options.body instanceof FormData) {
+      delete headers['Content-Type'];
+      return { headers, body: options.body };
+    }
+    return { headers, body: options.body ? JSON.stringify(options.body) : undefined };
   }
 
   private callHeaders(options?: CallOptions): Record<string, string> | undefined {
