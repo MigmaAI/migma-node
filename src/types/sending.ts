@@ -14,6 +14,15 @@ export interface SendEmailParams {
   subject: string;
   /** Values print as typed: HTML or Markdown in a value shows as text. A value used as a link or image destination still takes a complete URL. */
   variables?: Record<string, unknown>;
+  /**
+   * HTML you built for this email, such as an order's item list or a tracking
+   * button. Each value renders as HTML where its tag sits in the email's text.
+   * Single-recipient sends only (recipientType 'email'). A name cannot be in
+   * both variables and htmlVariables, and names Migma fills from the recipient
+   * (email, firstName, the unsubscribe link and the like) are refused. Escape
+   * any text your own users typed before you place it in the HTML.
+   */
+  htmlVariables?: Record<string, string>;
   providerType?: ProviderType;
   /** Optional when emailId or conversationId can resolve project automatically. */
   projectId?: string;
