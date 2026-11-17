@@ -57,6 +57,7 @@ export interface CreateCampaignParams {
   recipientIds?: string[];
   topicId?: string;
   providerType?: 'ses' | 'resend' | 'sendgrid' | 'mailgun' | 'migma';
+  /** Values print as typed: HTML or Markdown in a value shows as text. A value used as a link or image destination still takes a complete URL. */
   variables?: Record<string, unknown>;
 }
 

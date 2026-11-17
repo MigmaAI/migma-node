@@ -307,6 +307,23 @@ await migma.sending.send({
 });
 ```
 
+Values in `variables` print exactly as typed, so HTML in a value shows as text. To send HTML you built, such as an order's item list or a tracking button, pass it in `htmlVariables` on a single-recipient send:
+
+```typescript
+await migma.sending.send({
+  recipientType: 'email',
+  recipientEmail: 'user@example.com',
+  from: 'orders@yourdomain.com',
+  fromName: 'Your Company',
+  subject: 'Your order has shipped',
+  emailId: 'email_abc123',
+  variables: { order_number: '10482' },
+  htmlVariables: { items_html: '<ul><li>Blue mug x 2</li></ul>' },
+});
+```
+
+A name cannot be in both fields. Escape any text your own users typed before you place it in the HTML.
+
 [Sending API Reference](https://docs.migma.ai/api-reference/sending/send-email)
 
 ### Sending Metrics
