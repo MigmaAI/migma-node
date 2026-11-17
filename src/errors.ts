@@ -14,12 +14,22 @@ export enum MigmaErrorCode {
 export class MigmaError extends Error {
   readonly statusCode: number;
   readonly code: MigmaErrorCode;
+  readonly serverCode?: string;
+  readonly data?: Record<string, unknown>;
 
-  constructor(message: string, statusCode: number, code?: MigmaErrorCode) {
+  constructor(
+    message: string,
+    statusCode: number,
+    code?: MigmaErrorCode,
+    serverCode?: string,
+    data?: Record<string, unknown>
+  ) {
     super(message);
     this.name = 'MigmaError';
     this.statusCode = statusCode;
     this.code = code ?? MigmaError.codeFromStatus(statusCode);
+    this.serverCode = serverCode;
+    this.data = data;
   }
 
   private static codeFromStatus(status: number): MigmaErrorCode {
@@ -48,6 +58,8 @@ export class MigmaError extends Error {
       message: this.message,
       statusCode: this.statusCode,
       code: this.code,
+      ...(this.serverCode !== undefined && { serverCode: this.serverCode }),
+      ...(this.data !== undefined && { data: this.data }),
     };
   }
 }
