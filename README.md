@@ -586,6 +586,15 @@ const { data: png } = await migma.export.png('conversation_id');
 const { data: pdf } = await migma.export.pdf('conversation_id');
 const { data: klaviyo } = await migma.export.klaviyo('conversation_id', 'hybrid');
 const { data: mailchimp } = await migma.export.mailchimp('conversation_id');
+
+// Create the template in the brand's connected Klaviyo account, images hosted in Klaviyo.
+// Reuse the idempotency key when retrying, so a retry returns the same template.
+const { data: template } = await migma.export.pushToKlaviyo(
+  'conversation_id',
+  { name: 'Spring sale' },
+  { idempotencyKey: 'push-spring-sale-1' },
+);
+console.log(template.editorUrl, template.images.kept);
 ```
 
 [Export API Reference](https://docs.migma.ai/api-reference/export/list-export-formats)
@@ -710,7 +719,7 @@ await migma.images.updateLogos('proj_abc123', {
 | `migma.campaigns` | `list` `create` `get` `send` `schedule` `cancel` `stats` `logs` `archive` `unarchive` | [Campaigns](https://docs.migma.ai/campaigns/overview) |
 | `migma.validation` | `all` `compatibility` `links` `spelling` `deliverability` | [Validation](https://docs.migma.ai/api-reference/email-validation/run-all-validation-checks) |
 | `migma.previews` | `create` `get` `getStatus` `getDevice` `getSupportedDevices` `createAndWait` | [Previews](https://docs.migma.ai/api-reference/email-previews/create-email-preview) |
-| `migma.export` | `getFormats` `getStatus` `html` `pdf` `png` `klaviyo` `mailchimp` `hubspot` | [Export](https://docs.migma.ai/api-reference/export/list-export-formats) |
+| `migma.export` | `getFormats` `getStatus` `html` `pdf` `png` `klaviyo` `pushToKlaviyo` `mailchimp` `hubspot` | [Export](https://docs.migma.ai/api-reference/export/list-export-formats) |
 | `migma.domains` | `create` `list` `get` `verify` `update` `remove` `checkAvailability` `listManaged` `createManaged` `removeManaged` `provisionStream` `setup` | [Domains](https://docs.migma.ai/api-reference/domains/list-domains) |
 | `migma.webhooks` | `create` `list` `get` `update` `remove` `test` `getDeliveries` `getEvents` `getStats` | [Webhooks](https://docs.migma.ai/webhooks) |
 | `migma.knowledgeBase` | `list` `add` `update` `remove` | [API Ref](https://docs.migma.ai/api-reference/introduction) |
@@ -794,6 +803,10 @@ if (failed.length) throw new Error(`Broken on: ${failed.map((d) => d.deviceName)
 ```typescript
 const { data } = await migma.export.klaviyo(conversationId, 'hybrid');
 console.log('Download:', data.files[0].url);
+
+// Or straight into the brand's connected Klaviyo account
+const { data: template } = await migma.export.pushToKlaviyo(conversationId);
+console.log('Edit in Klaviyo:', template.editorUrl);
 ```
 
 ---
