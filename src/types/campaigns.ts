@@ -64,7 +64,9 @@ export interface CreateCampaignParams {
 export interface ListCampaignsParams {
   projectId: string;
   status?: CampaignStatus;
+  /** Positive safe integer page number. Default 1. */
   page?: number;
+  /** Integer results per page, from 1 to 200. Default 20. */
   limit?: number;
   archived?: boolean;
 }
