@@ -161,6 +161,8 @@ const { data: project } = await migma.projects.importAndWait(
     onPoll: (status) => console.log(`${status.progress.percentage}%`),
   }
 );
+// A website you already have a brand for returns that brand: project.isExisting is true.
+// Pass allowDuplicate: true to save a second brand for the same website.
 ```
 
 [Projects API Reference](https://docs.migma.ai/api-reference/projects/list-projects)
