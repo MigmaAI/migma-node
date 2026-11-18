@@ -12,7 +12,12 @@ export interface SendEmailParams {
   replyTo?: string;
   bcc?: string[];
   subject: string;
-  /** Values print as typed: HTML or Markdown in a value shows as text. A value used as a link or image destination still takes a complete URL. */
+  /**
+   * Values print as typed: HTML or Markdown in a value shows as text. A value
+   * used as a link or image destination still takes a complete URL. On a
+   * single-recipient send, a variable whose name ends in `_html` renders as
+   * HTML, the same as one sent in htmlVariables.
+   */
   variables?: Record<string, unknown>;
   /**
    * HTML you built for this email, such as an order's item list or a tracking

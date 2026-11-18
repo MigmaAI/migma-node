@@ -307,7 +307,7 @@ await migma.sending.send({
 });
 ```
 
-Values in `variables` print exactly as typed, so HTML in a value shows as text. To send HTML you built, such as an order's item list or a tracking button, pass it in `htmlVariables` on a single-recipient send:
+Values in `variables` print exactly as typed, so HTML in a value shows as text. To send HTML you built on a single-recipient send, such as an order's item list or a tracking button, name the variable so it ends in `_html`, or pass it in `htmlVariables`:
 
 ```typescript
 await migma.sending.send({
@@ -317,8 +317,8 @@ await migma.sending.send({
   fromName: 'Your Company',
   subject: 'Your order has shipped',
   emailId: 'email_abc123',
-  variables: { order_number: '10482' },
-  htmlVariables: { items_html: '<ul><li>Blue mug x 2</li></ul>' },
+  variables: { order_number: '10482', items_html: '<ul><li>Blue mug x 2</li></ul>' },
+  htmlVariables: { tracking_button: '<a href="https://yourdomain.com/track/10482">Track your order</a>' },
 });
 ```
 
