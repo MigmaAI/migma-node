@@ -40,14 +40,25 @@ export interface ImportProjectParams {
     secondary?: string;
     favicon?: string;
   };
+  /**
+   * Save a second brand for a website you already have a brand for.
+   * Without it, the import returns your existing brand for that website.
+   */
+  allowDuplicate?: boolean;
 }
 
 export interface ImportProjectResponse {
   projectId: string;
-  status: 'pending';
+  /** `pending` for a new import. An existing brand returns its current status. */
+  status: 'pending' | 'processing' | 'active';
   domain: string;
   urls: string[];
   message: string;
+  /**
+   * `true` when the website already had a brand of yours in this workspace and that
+   * brand was returned: no new brand was saved and no import started.
+   */
+  isExisting?: boolean;
 }
 
 export interface ImportStatusResponse {
@@ -62,6 +73,8 @@ export interface ImportStatusResponse {
     percentage: number;
   };
   importMetrics?: Record<string, unknown>;
+  /** Set by `importAndWait`: `true` when the website already had a brand and it was returned. */
+  isExisting?: boolean;
 }
 
 export interface RetryImportResponse {

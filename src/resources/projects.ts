@@ -97,6 +97,7 @@ export class Projects {
   /**
    * Import a project and wait for completion.
    * Polls getImportStatus until status is 'active' or 'error'.
+   * A website you already have a brand for returns that brand, with `isExisting: true`.
    */
   async importAndWait(
     params: ImportProjectParams,
@@ -107,12 +108,16 @@ export class Projects {
       return { data: null, error: startResult.error };
     }
 
-    const projectId = startResult.data.projectId;
+    const { projectId, isExisting } = startResult.data;
 
-    return poll(
+    const result = await poll(
       () => this.getImportStatus(projectId),
       (status) => status.status === 'active' || status.status === 'error',
       options
     );
+    // The status carries no word on whether the brand was already there; the import answer does.
+    return result.data && isExisting !== undefined
+      ? { data: { ...result.data, isExisting }, error: null }
+      : result;
   }
 }
