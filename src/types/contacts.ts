@@ -18,10 +18,21 @@ export interface Contact {
   updatedAt: string;
 }
 
-export interface CreateContactParams {
-  email: string;
+/** Name inputs are stored and returned as firstName/lastName. Equal aliases collapse;
+ * conflicting values return 400. An empty string clears the name. */
+export interface ContactNameInput {
   firstName?: string;
   lastName?: string;
+  first_name?: string;
+  last_name?: string;
+  FIRSTNAME?: string;
+  FIRST_NAME?: string;
+  LASTNAME?: string;
+  LAST_NAME?: string;
+}
+
+export interface CreateContactParams extends ContactNameInput {
+  email: string;
   phone?: string;
   /** ISO 3166-1 alpha-2 country code (e.g., US, CA, GB) */
   country?: string;
@@ -33,9 +44,7 @@ export interface CreateContactParams {
   projectId: string;
 }
 
-export interface UpdateContactParams {
-  firstName?: string;
-  lastName?: string;
+export interface UpdateContactParams extends ContactNameInput {
   phone?: string | null;
   country?: string;
   language?: string;
@@ -59,10 +68,8 @@ export interface ListContactsResponse {
   count: number;
 }
 
-export interface BulkImportContactItem {
+export interface BulkImportContactItem extends ContactNameInput {
   email: string;
-  firstName?: string;
-  lastName?: string;
   phone?: string;
   country?: string;
   language?: string;
