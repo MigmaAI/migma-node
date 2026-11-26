@@ -9,6 +9,13 @@ export interface CreditStatus {
 }
 
 export type UpgradePlan =
+  | 'start'
+  | 'pro'
+  | 'max'
+  | 'start_annual'
+  | 'pro_annual'
+  | 'max_annual'
+  /** @deprecated Older plan names. Each opens the plan that replaced it: Start, Pro, Max. */
   | 'basic'
   | 'premium'
   | 'business'
@@ -18,20 +25,22 @@ export type UpgradePlan =
 
 export interface UpgradeLinkParams {
   /**
-   * User-chosen plan for new subscription checkout. Omit for an existing
-   * Stripe customer's billing portal. Passing plan for an active subscription
-   * can change it and charge immediately; requires explicit charge approval.
+   * The plan the pricing page opens on. Omit for an existing customer's
+   * billing portal (cards and invoices). Nothing is changed or charged.
    */
   plan?: UpgradePlan;
 }
 
 export interface UpgradeLink {
-  /** Checkout, invoice, confirmation, or portal URL; not proof of payment. */
+  /** The pricing page or the billing portal, for the account owner to open in a browser. Not proof of payment. */
   url: string;
-  /** checkout includes an existing plan-change result; portal is the billing portal. */
-  kind: 'checkout' | 'portal';
-  /** Present when a new Stripe Checkout session was created. */
+  /**
+   * pricing: the page where the owner picks or changes a plan and pays.
+   * portal: the billing portal. `checkout` is no longer returned.
+   */
+  kind: 'pricing' | 'portal' | 'checkout';
+  /** @deprecated No longer returned: the link never starts a checkout. */
   sessionId?: string;
-  /** Migma checkout order id or Stripe invoice id for an existing plan change. */
+  /** @deprecated No longer returned: the link never changes a subscription. */
   orderId?: string;
 }
